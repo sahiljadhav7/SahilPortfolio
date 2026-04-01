@@ -203,8 +203,7 @@ function ContactSection() {
         <div ref={ref} className={`transition-all duration-700 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
           <span className="font-mono text-xs text-blue-400 tracking-widest uppercase">05. Contact</span>
           <h2 className="text-3xl md:text-4xl font-bold mt-3 mb-4 tracking-tight">Let's build something together</h2>
-          <p className="text-zinc-400 mb-10 leading-relaxed">Whether you have a project idea, a role in mind, or just want to connect — my inbox is always open.</p>
-          <a href="mailto:jadhavsahilcodes@gmail.com" className="inline-block bg-blue-400 text-black font-bold px-8 py-3.5 rounded-lg hover:bg-blue-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-400/20 transition-all">Say Hello 👋</a>
+          <p>jadhavsahilcodes@gmail(dot)com</p>
           <div className="flex justify-center gap-6 mt-12">
             {socials.map(s => (
               <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label} className="text-zinc-500 hover:text-blue-400 hover:-translate-y-0.5 transition-all">{s.icon}</a>
