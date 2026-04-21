@@ -65,11 +65,11 @@ export const PROJECTS: Project[] = [
     icon: "🧠",
   },
   {
-    name: "TranquilFinance",
+    name: "XAI",
     description:
-      "Full-featured personal finance tracker with budget planning, expense analytics, and visual reports.",
-    tags: ["JavaScript", "Charts.js", "Node.js"],
-    github: "https://github.com/sahiljadhav7/TranquilFinance",
+      "Explainable AI for Disease Diagnosis: ML model for CKD prediction and CNN for lung disease detection, with SHAP and Grad-CAM interpretability techniques.",
+    tags: ["Flask", "Charts.js", "Node.js"],
+    github: "https://github.com/sahiljadhav7/XAI",
     icon: "💰",
   },
 ];
