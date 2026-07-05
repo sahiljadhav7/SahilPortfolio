@@ -4,13 +4,16 @@ import { Dithering } from "@paper-design/shaders-react";
 export default function ResumePage() {
     return (_jsxs("div", { className: "relative min-h-screen overflow-hidden flex", children: [_jsxs("div", { className: "w-1/2 p-10 font-mono relative z-10 flex flex-col bg-black text-white", children: [_jsxs("div", { className: "mb-12 flex-1", children: [_jsxs("div", { className: "mb-10", children: [_jsx("h2", { className: "text-3xl font-bold tracking-tight", children: "SAHIL JADHAV" }), _jsx("h3", { className: "text-xl font-normal opacity-60 mt-1", children: "SOFTWARE ENGINEER" })] }), _jsx("p", { className: "text-sm leading-relaxed mb-10 max-w-sm opacity-70 text-gray-300", children: "Software Engineer with hands-on experience at JIO and CONCERTO. B.E. in EXTC @ LTCE (2022\u20132026). Published ML researcher. Building full-stack apps with React, Next.js and Node.js." }), _jsxs("div", { className: "mb-10 space-y-2", children: [_jsx("p", { className: "text-xs opacity-40 uppercase tracking-widest mb-3", children: "Selected Projects" }), [
                                         {
+                                            name: "ForgeAI",
+                                            type: "AI App Builder",
+                                            year: "2026",
+                                        },
+                                        {
                                             name: "Webscraper",
                                             type: "News Intelligence Platform",
                                             year: "2026",
                                         },
                                         { name: "RupeeDash", type: "Finance Dashboard", year: "2026" },
-                                        { name: "QRGenerator", type: "React + Canvas App", year: "2025" },
-                                        { name: "LeadPilot", type: "AI Lead Gen Tool", year: "2026" },
                                         { name: "SecondBrain", type: "Knowledge Manager", year: "2026" },
                                     ].map((p) => (_jsxs("div", { className: "flex items-center gap-4 text-sm", children: [_jsx("span", { className: "w-36 font-medium truncate", children: p.name }), _jsx("span", { className: "flex-1 opacity-50 text-xs", children: p.type }), _jsx("span", { className: "opacity-30 text-xs", children: p.year })] }, p.name)))] }), _jsxs("div", { className: "space-y-2", children: [_jsx("p", { className: "text-xs opacity-40 uppercase tracking-widest mb-3", children: "Experience" }), [
                                         {
