@@ -17,6 +17,16 @@ export interface Experience {
 
 export const PROJECTS: Project[] = [
   {
+    name: "ForgeAI",
+    description:
+      "A full stack AI app builder that turns natural-language prompts into working React apps inside a live browser workspace. Users can generate an app, inspect the code, preview it instantly with Sandpack, iterate through chat, upload a reference image, and export the result as a ZIP.",
+    tags: ["Next.js", "React", "TypeScript", "Postgress", "Prisma", "Clerk"],
+    github: "https://github.com/sahiljadhav7/ForgeAI",
+    live: "https://forgeai.lol",
+    icon: "",
+  },
+
+  {
     name: "Webscraper",
     description:
       "Full-stack news intelligence platform scraping El País articles. Automated pipeline with node-cron, NLP analytics (sentiment, keywords, word frequency), REST APIs with Express (MVC), MongoDB, React dashboard with Chart.js, containerized with Docker.",
