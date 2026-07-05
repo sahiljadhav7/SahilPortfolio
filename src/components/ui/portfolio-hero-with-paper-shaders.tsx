@@ -30,14 +30,17 @@ export default function ResumePage() {
             </p>
             {[
               {
+                name: "ForgeAI",
+                type: "AI App Builder",
+                year: "2026",
+              },
+              {
                 name: "Webscraper",
                 type: "News Intelligence Platform",
                 year: "2026",
               },
               { name: "RupeeDash", type: "Finance Dashboard", year: "2026" },
-              { name: "QRGenerator", type: "React + Canvas App", year: "2025" },
 
-              { name: "LeadPilot", type: "AI Lead Gen Tool", year: "2026" },
               { name: "SecondBrain", type: "Knowledge Manager", year: "2026" },
             ].map((p) => (
               <div key={p.name} className="flex items-center gap-4 text-sm">

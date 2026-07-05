@@ -104,6 +104,22 @@ function ProjectCard({ p, index }: { p: typeof PROJECTS[0]; index: number }) {
       </div>
       <h3 className="font-semibold text-white mb-2">{p.name}</h3>
       <p className="text-sm text-zinc-400 leading-relaxed flex-1">{p.description}</p>
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        {p.live ? (
+          <a
+            href={p.live}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-400/10 px-3 py-1.5 text-sm font-medium text-blue-300 transition hover:border-blue-400/60 hover:bg-blue-400/20"
+          >
+            <span>Live Preview</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
+              <path d="M7 17L17 7" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M8 7h8v8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </a>
+        ) : null}
+      </div>
       <div className="flex flex-wrap gap-1.5 mt-4">
         {p.tags.map(t => <span key={t} className="font-mono text-xs text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded">{t}</span>)}
       </div>
