@@ -1,88 +1,497 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { useEffect, useRef, useState } from "react";
-import ResumePage from "@/components/ui/portfolio-hero-with-paper-shaders";
-import { Navbar1 } from "@/components/ui/navbar-1";
-import { ShaderAnimation } from "@/components/ui/shader-animation";
-import { PROJECTS, EXPERIENCES, EXTRAS, SKILLS } from "@/data";
-// ── Shared reveal hook ───────────────────────────────────────────────────────
-function useReveal() {
-    const ref = useRef(null);
-    const [visible, setVisible] = useState(false);
+import { ArrowUpRight, ChevronDown, ChevronUp, ExternalLink, Github, Globe, Mail, MapPin, Menu, Moon, Search, Sun, X, Briefcase, Hammer, Layers3, Database, Code2, FilePenLine, } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { Fragment, useEffect, useMemo, useState, } from "react";
+import { cn } from "@/lib/utils";
+import { HEADLINE_TITLES, QUOTES, site } from "@/config/site";
+import { useGithubHeatmap } from "@/hooks/useGithubHeatmap";
+const navItems = [
+    { label: "About", href: "/#about", type: "section" },
+    { label: "Projects", href: "/#projects", type: "section" },
+    { label: "Experience", href: "/#experience", type: "section" },
+    { label: "Contact", href: "/#contact", type: "section" },
+    { label: "Writing", href: "/writing", type: "route" },
+];
+const sideIndexItems = [
+    { id: "about", label: "About" },
+    { id: "contact", label: "Contact" },
+    { id: "projects", label: "Projects" },
+    { id: "experience", label: "Experience" },
+    { id: "skills", label: "Skills" },
+    { id: "writing", label: "Writing" },
+    { id: "github", label: "GitHub" },
+];
+const projectTabs = [
+    "All",
+    "Frontend",
+    "Backend",
+    "Fullstack",
+];
+const techTabs = [
+    "All",
+    "Languages",
+    "Frontend",
+    "Backend",
+    "Databases",
+    "DevOps & Tools",
+];
+const techTabIcons = {
+    All: _jsx(Layers3, { className: "h-3.5 w-3.5" }),
+    Languages: _jsx(Code2, { className: "h-3.5 w-3.5" }),
+    Frontend: _jsx(Layers3, { className: "h-3.5 w-3.5" }),
+    Backend: _jsx(Hammer, { className: "h-3.5 w-3.5" }),
+    Databases: _jsx(Database, { className: "h-3.5 w-3.5" }),
+    "DevOps & Tools": _jsx(Briefcase, { className: "h-3.5 w-3.5" }),
+};
+const pageTransition = {
+    initial: { opacity: 0, y: 15 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.4, ease: "easeOut" },
+};
+function normalizePath(pathname) {
+    if (pathname === "/projects")
+        return "/projects";
+    if (pathname === "/experience")
+        return "/experience";
+    if (pathname === "/contact")
+        return "/contact";
+    if (pathname === "/writing")
+        return "/writing";
+    return "/";
+}
+function navigateTo(path) {
+    if (window.location.pathname + window.location.hash === path) {
+        if (path.includes("#")) {
+            scrollToHash(path.split("#")[1] ?? "");
+        }
+        return;
+    }
+    window.history.pushState({}, "", path);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+}
+function scrollToHash(id) {
+    if (!id)
+        return;
+    const element = document.getElementById(id);
+    if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+}
+function useRoute() {
+    const [route, setRoute] = useState(() => normalizePath(window.location.pathname));
     useEffect(() => {
-        const el = ref.current;
-        if (!el)
-            return;
-        const observer = new IntersectionObserver(([entry]) => {
-            if (entry.isIntersecting) {
-                setVisible(true);
-                observer.unobserve(el);
+        const onChange = () => {
+            setRoute(normalizePath(window.location.pathname));
+            const hash = window.location.hash.replace("#", "");
+            if (hash) {
+                setTimeout(() => scrollToHash(hash), 30);
             }
-        }, { threshold: 0.08, rootMargin: "0px 0px -60px 0px" });
-        observer.observe(el);
-        return () => observer.disconnect();
+            else {
+                window.scrollTo({ top: 0, behavior: "smooth" });
+            }
+        };
+        window.addEventListener("popstate", onChange);
+        return () => window.removeEventListener("popstate", onChange);
     }, []);
-    return { ref, visible };
+    return route;
 }
-// ── Section Header ────────────────────────────────────────────────────────────
-function SectionHeader({ tag, title }) {
-    const { ref, visible } = useReveal();
-    return (_jsxs("div", { ref: ref, className: `mb-14 transition-all duration-700 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`, children: [_jsx("span", { className: "font-mono text-xs text-blue-400 tracking-widest uppercase", children: tag }), _jsx("h2", { className: "text-3xl md:text-4xl font-bold mt-2 tracking-tight", children: title })] }));
+function useThemeMode() {
+    const [theme, setTheme] = useState("dark");
+    useEffect(() => {
+        const saved = window.localStorage.getItem("theme");
+        const preferred = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        const nextTheme = saved ?? preferred;
+        document.documentElement.classList.toggle("light", nextTheme === "light");
+        setTheme(nextTheme);
+    }, []);
+    const toggleTheme = () => {
+        setTheme((current) => {
+            const next = current === "dark" ? "light" : "dark";
+            document.documentElement.classList.toggle("light", next === "light");
+            window.localStorage.setItem("theme", next);
+            return next;
+        });
+    };
+    return { theme, toggleTheme };
 }
-// ── About ─────────────────────────────────────────────────────────────────────
+function useActiveSection(enabled) {
+    const [activeId, setActiveId] = useState("about");
+    useEffect(() => {
+        if (!enabled)
+            return;
+        const sections = sideIndexItems
+            .map((item) => document.getElementById(item.id))
+            .filter(Boolean);
+        const observer = new IntersectionObserver((entries) => {
+            const visible = entries
+                .filter((entry) => entry.isIntersecting)
+                .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+            if (visible?.target.id) {
+                setActiveId(visible.target.id);
+            }
+        }, { rootMargin: "-20% 0px -55% 0px", threshold: [0.15, 0.3, 0.5] });
+        sections.forEach((section) => observer.observe(section));
+        return () => observer.disconnect();
+    }, [enabled]);
+    return activeId;
+}
+function useOneko() {
+    useEffect(() => {
+        const script = document.createElement("script");
+        script.src = "/oneko.js";
+        script.async = true;
+        document.body.appendChild(script);
+        return () => {
+            script.remove();
+            document.getElementById("oneko")?.remove();
+        };
+    }, []);
+}
+function useKonamiAchievement() {
+    const [burst, setBurst] = useState(0);
+    useEffect(() => {
+        const konami = [
+            "ArrowUp",
+            "ArrowUp",
+            "ArrowDown",
+            "ArrowDown",
+            "ArrowLeft",
+            "ArrowRight",
+            "ArrowLeft",
+            "ArrowRight",
+            "b",
+            "a",
+        ];
+        let buffer = [];
+        let typed = "";
+        const trigger = () => {
+            setBurst(Date.now());
+            window.setTimeout(() => setBurst(0), 2200);
+        };
+        const onKeyDown = (event) => {
+            const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+            buffer = [...buffer, key].slice(-konami.length);
+            typed = `${typed}${key}`.slice(-12);
+            if (typed.includes("anurag") || typed.includes("jha")) {
+                trigger();
+                typed = "";
+            }
+            if (buffer.join("|") === konami.join("|")) {
+                trigger();
+                buffer = [];
+            }
+        };
+        window.addEventListener("keydown", onKeyDown);
+        return () => window.removeEventListener("keydown", onKeyDown);
+    }, []);
+    return burst;
+}
+function useClock() {
+    const [time, setTime] = useState("");
+    useEffect(() => {
+        const formatter = new Intl.DateTimeFormat("en-IN", {
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZone: "Asia/Calcutta",
+        });
+        const update = () => setTime(formatter.format(new Date()));
+        update();
+        const id = window.setInterval(update, 60000);
+        return () => window.clearInterval(id);
+    }, []);
+    return time;
+}
+function useCommandPaletteShortcuts(open, close) {
+    useEffect(() => {
+        const onKeyDown = (event) => {
+            const isMeta = event.metaKey || event.ctrlKey;
+            if (isMeta && event.key.toLowerCase() === "k") {
+                event.preventDefault();
+                open();
+            }
+            if (event.key === "Escape") {
+                close();
+            }
+        };
+        window.addEventListener("keydown", onKeyDown);
+        return () => window.removeEventListener("keydown", onKeyDown);
+    }, [close, open]);
+}
+function Shell({ children, className }) {
+    return (_jsx("div", { className: cn("mx-auto w-full max-w-[760px] border-x border-dashed border-[var(--line)] px-6 sm:px-8", className), children: children }));
+}
+function GapBand({ h = "h-7" }) {
+    return (_jsx("div", { className: cn("bg-stripes", h), children: _jsx(Shell, {}) }));
+}
+function SectionHeader({ title, aside, }) {
+    return (_jsxs("div", { className: "relative border-y border-[var(--line)] bg-stripes", children: [_jsx("span", { className: "absolute left-2 top-2 h-[3px] w-[3px] rounded-full bg-[var(--fg)] opacity-40" }), _jsx("span", { className: "absolute right-2 top-2 h-[3px] w-[3px] rounded-full bg-[var(--fg)] opacity-40" }), _jsx("span", { className: "absolute bottom-2 left-2 h-[3px] w-[3px] rounded-full bg-[var(--fg)] opacity-40" }), _jsx("span", { className: "absolute bottom-2 right-2 h-[3px] w-[3px] rounded-full bg-[var(--fg)] opacity-40" }), _jsxs(Shell, { className: "flex min-h-16 flex-col justify-center gap-3 py-4 sm:min-h-[76px] sm:flex-row sm:items-center sm:justify-between", children: [_jsx("h2", { className: "font-serif text-2xl tracking-wide text-[var(--fg)]", children: title }), aside ? _jsx("aside", { className: "text-right", children: aside }) : null] })] }));
+}
+function GitHubWordmark() {
+    return _jsx(Github, { className: "h-4 w-4" });
+}
+function ThemeToggle({ theme, toggleTheme, }) {
+    return (_jsx("button", { type: "button", onClick: toggleTheme, "aria-label": "Toggle theme", className: "inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--chip)] text-[var(--fg)] transition-all duration-200 hover:-translate-y-0.5 hover:rotate-45 hover:border-[var(--soft)]", children: theme === "dark" ? _jsx(Sun, { className: "h-4 w-4" }) : _jsx(Moon, { className: "h-4 w-4" }) }));
+}
+function Nav({ route, activeSection, theme, toggleTheme, onOpenPalette, }) {
+    const [open, setOpen] = useState(false);
+    useEffect(() => {
+        setOpen(false);
+    }, [route]);
+    const isItemActive = (item) => {
+        if (item.type === "route")
+            return route === item.href;
+        if (route !== "/")
+            return false;
+        return activeSection === item.href.replace("/#", "");
+    };
+    return (_jsxs("nav", { className: "sticky top-0 z-40 border-b border-[var(--line)] bg-[color:rgb(from_var(--bg)_r_g_b_/_0.85)] backdrop-blur-md supports-[backdrop-filter]:bg-[color:rgb(from_var(--bg)_r_g_b_/_0.85)]", children: [_jsxs(Shell, { className: "flex min-h-16 items-center justify-between gap-6", children: [_jsx("button", { type: "button", onClick: () => navigateTo("/"), className: "font-serif text-xl tracking-wide text-[var(--fg)]", children: site.name }), _jsxs("div", { className: "hidden items-center gap-5 sm:flex", children: [navItems.map((item) => {
+                                const active = isItemActive(item);
+                                return (_jsxs("button", { type: "button", onClick: () => item.type === "route" ? navigateTo(item.href) : navigateTo(item.href), className: cn("group relative text-[13px] transition-colors", active
+                                        ? "font-semibold text-[var(--fg)]"
+                                        : "text-[var(--muted)] hover:text-[var(--fg)]"), children: [item.label, _jsx("span", { className: cn("absolute inset-x-0 -bottom-1 h-px origin-left bg-[var(--fg)] transition-transform duration-200", active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100") })] }, item.label));
+                            }), _jsx("button", { type: "button", onClick: onOpenPalette, "aria-label": "Open command palette", className: "inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--chip)] text-[var(--fg)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--soft)]", children: _jsx(Search, { className: "h-4 w-4" }) }), _jsx(ThemeToggle, { theme: theme, toggleTheme: toggleTheme })] }), _jsxs("div", { className: "flex items-center gap-2 sm:hidden", children: [_jsx("button", { type: "button", onClick: onOpenPalette, "aria-label": "Open command palette", className: "inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--chip)] text-[var(--fg)]", children: _jsx(Search, { className: "h-4 w-4" }) }), _jsx(ThemeToggle, { theme: theme, toggleTheme: toggleTheme }), _jsx("button", { type: "button", onClick: () => setOpen((current) => !current), "aria-label": "Toggle menu", className: "inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--chip)] text-[var(--fg)]", children: open ? _jsx(X, { className: "h-4 w-4" }) : _jsx(Menu, { className: "h-4 w-4" }) })] })] }), _jsx(AnimatePresence, { children: open ? (_jsx(motion.div, { initial: { height: 0, opacity: 0 }, animate: { height: "auto", opacity: 1 }, exit: { height: 0, opacity: 0 }, transition: { duration: 0.25, ease: "easeOut" }, className: "overflow-hidden border-t border-[var(--line)] bg-[var(--bg)] bg-stripes sm:hidden", children: _jsx(Shell, { className: "py-2", children: navItems.map((item) => {
+                            const active = isItemActive(item);
+                            return (_jsxs("button", { type: "button", onClick: () => item.type === "route" ? navigateTo(item.href) : navigateTo(item.href), className: "flex w-full items-center justify-between border-b border-dashed border-[var(--line)] py-3 text-left last:border-b-0", children: [_jsx("span", { className: cn("text-sm", active
+                                            ? "font-semibold text-[var(--fg)]"
+                                            : "text-[var(--muted)]"), children: item.label }), _jsx("span", { className: cn("h-2 w-2 rounded-full", active ? "bg-[var(--fg)]" : "bg-[var(--soft)]/40") })] }, item.label));
+                        }) }) })) : null })] }));
+}
+function Hero({ onOpenPalette }) {
+    const avatars = ["/profile.jpg", "/profile2.png"];
+    const [avatarIndex, setAvatarIndex] = useState(0);
+    const [headlineIndex, setHeadlineIndex] = useState(0);
+    const [avatarFailed, setAvatarFailed] = useState(false);
+    useEffect(() => {
+        const id = window.setInterval(() => {
+            setHeadlineIndex((current) => (current + 1) % HEADLINE_TITLES.length);
+        }, 3200);
+        return () => window.clearInterval(id);
+    }, []);
+    const rotateAvatar = () => {
+        setAvatarFailed(false);
+        setAvatarIndex((current) => (current + 1) % avatars.length);
+    };
+    return (_jsx(motion.section, { ...pageTransition, children: _jsxs(Shell, { className: "py-7 sm:py-9", children: [_jsxs("div", { className: "relative h-36 overflow-hidden rounded-xl border border-[var(--line)] sm:h-44", children: [_jsx("img", { src: "/images/cover.jpg", alt: "Editorial portfolio cover", className: "h-full w-full object-cover opacity-65 grayscale" }), _jsx("div", { className: "absolute inset-0 bg-gradient-to-r from-[rgba(0,0,0,0.35)] to-transparent" }), _jsx("div", { className: "absolute inset-0 bg-[repeating-linear-gradient(0deg,rgba(255,255,255,0.05)_0,rgba(255,255,255,0.05)_1px,transparent_1px,transparent_4px)]" }), _jsx("div", { className: "absolute inset-0 bg-[repeating-linear-gradient(90deg,rgba(0,0,0,0.12)_0,rgba(0,0,0,0.12)_1px,transparent_1px,transparent_28px)]" }), _jsx("div", { className: "scanline absolute inset-0" })] }), _jsxs("div", { className: "mt-6 flex flex-col items-center gap-5 text-center sm:flex-row sm:items-end sm:justify-between sm:text-left", children: [_jsxs("div", { className: "flex flex-col items-center gap-4 sm:flex-row sm:items-end", children: [_jsxs("div", { className: "group relative", children: [_jsxs("button", { type: "button", onClick: rotateAvatar, className: "relative block overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--chip)]", children: [avatarFailed ? (_jsx("div", { className: "flex h-20 w-20 items-center justify-center font-serif text-lg text-[var(--fg)]", children: "SJ" })) : (_jsx("img", { src: avatars[avatarIndex], alt: site.name, className: "h-20 w-20 object-cover grayscale", onError: () => setAvatarFailed(true) })), _jsx("span", { className: "absolute inset-0 bg-[repeating-linear-gradient(0deg,rgba(255,255,255,0.10)_0,rgba(255,255,255,0.10)_1px,transparent_1px,transparent_4px)] opacity-[0.18] transition-opacity duration-200 group-hover:opacity-[0.30]" })] }), _jsx("button", { type: "button", onClick: rotateAvatar, className: "absolute right-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--chip)] text-[var(--fg)] opacity-100 transition-all duration-200 sm:opacity-0 sm:group-hover:opacity-100", "aria-label": "Rotate avatar", children: _jsx(ChevronDown, { className: "h-3.5 w-3.5 rotate-[-90deg]" }) })] }), _jsxs("div", { children: [_jsx("h1", { className: "glitch-text font-serif text-3xl leading-none tracking-tight sm:text-[38px]", children: site.name }), _jsx("div", { className: "mt-2 flex min-h-6 items-center justify-center sm:justify-start", children: _jsx(AnimatePresence, { mode: "wait", children: _jsx(motion.p, { initial: { y: 12, opacity: 0 }, animate: { y: 0, opacity: 1 }, exit: { y: -12, opacity: 0 }, transition: { duration: 0.3, ease: "easeOut" }, className: "font-mono text-[13px] text-[var(--muted)]", children: HEADLINE_TITLES[headlineIndex] }, HEADLINE_TITLES[headlineIndex]) }) }), _jsxs("div", { className: "mt-2 flex items-center justify-center gap-1.5 font-mono text-[11px] text-[var(--soft)] sm:justify-start", children: [_jsx(MapPin, { className: "h-3.5 w-3.5" }), _jsx("span", { children: site.location })] })] })] }), _jsxs("button", { type: "button", onClick: onOpenPalette, className: "inline-flex items-center gap-3 rounded-lg border border-[var(--line)] bg-[var(--chip)] px-3 py-2 font-mono text-[11px] text-[var(--muted)] transition-all duration-200 hover:-translate-y-0.5 hover:text-[var(--fg)]", children: [_jsx(Search, { className: "h-3.5 w-3.5" }), _jsx("span", { children: "Command Palette" }), _jsx("span", { className: "rounded border border-[var(--line)] px-1.5 py-0.5", children: "\u2318K" })] })] })] }) }));
+}
 function AboutSection() {
-    const { ref, visible } = useReveal();
-    const skillCategories = Object.entries(SKILLS);
-    return (_jsx("section", { id: "about", className: "py-28 px-6", children: _jsxs("div", { className: "max-w-5xl mx-auto", children: [_jsx(SectionHeader, { tag: "01. About", title: "Who I am" }), _jsxs("div", { className: "grid md:grid-cols-2 gap-14 items-start", children: [_jsxs("div", { ref: ref, className: `transition-all duration-700 delay-100 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`, children: [_jsx("p", { className: "text-zinc-400 leading-relaxed mb-4", children: "Software Engineer with hands-on experience through two internships (JIO, CONCERTO). Currently completing a B.E. in EXTC with a minor in DSA at Lokmanya Tilak College of Engineering (2022\u20132026)." }), _jsx("p", { className: "text-zinc-400 leading-relaxed mb-8", children: "Published ML researcher, hackathon team lead, and open source contributor. I build real-world apps using React, Next.js, Node.js, and Python \u2014 focused on clean architecture and great UX." }), _jsx("div", { className: "flex gap-8 pt-6 border-t border-white/5", children: [
-                                        { num: "15", label: "GitHub Repos" },
-                                        { num: "2", label: "Internships" },
-                                        { num: "1", label: "Published Paper" },
-                                    ].map((s) => (_jsxs("div", { children: [_jsx("span", { className: "block font-mono text-2xl font-bold text-blue-400", children: s.num }), _jsx("span", { className: "text-xs text-zinc-500 mt-1 block", children: s.label })] }, s.label))) })] }), _jsx("div", { className: "flex flex-col gap-5", children: skillCategories.map(([label, tags], i) => (_jsxs("div", { className: `transition-all duration-700 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`, style: { transitionDelay: `${(i + 2) * 80}ms` }, children: [_jsx("h4", { className: "font-mono text-xs text-blue-400 uppercase tracking-widest mb-2", children: label }), _jsx("div", { className: "flex flex-wrap gap-2", children: tags.map((t) => (_jsx("span", { className: "font-mono text-xs text-zinc-300 bg-zinc-900 border border-white/5 px-2.5 py-1 rounded hover:border-blue-400/40 hover:text-blue-300 transition-colors", children: t }, t))) })] }, label))) })] })] }) }));
+    return (_jsxs("section", { id: "about", children: [_jsx(SectionHeader, { title: "About" }), _jsxs(Shell, { className: "grid gap-6 py-7 sm:grid-cols-[1.25fr_0.9fr] sm:py-8", children: [_jsx("div", { className: "space-y-3", children: site.about.map((paragraph, index) => (_jsxs(motion.div, { initial: { opacity: 0, y: 18 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, amount: 0.25 }, transition: {
+                                duration: 0.6,
+                                ease: [0.22, 1, 0.36, 1],
+                                delay: index * 0.1,
+                            }, className: "flex gap-3 text-[13.5px] leading-relaxed text-[var(--muted)]", children: [_jsx("span", { className: "pt-1 text-[var(--soft)]", children: "\u2022" }), _jsx("p", { children: paragraph })] }, paragraph))) }), _jsxs(motion.div, { initial: { opacity: 0, y: 18 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, amount: 0.25 }, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: 0.3 }, className: "rounded-xl border border-[var(--line)] bg-[var(--card)] p-5", children: [_jsx("p", { className: "font-mono text-[11px] font-semibold uppercase tracking-widest text-[var(--soft)]", children: "Developer Snapshot" }), _jsx("div", { className: "mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2", children: site.tldr.map((item) => (_jsxs("div", { className: "flex gap-2 text-[13px] text-[var(--muted)]", children: [_jsx("span", { className: "mt-1 h-2 w-2 rounded-full bg-emerald-500" }), _jsx("span", { children: item })] }, item))) })] })] })] }));
 }
-// ── Project Card ──────────────────────────────────────────────────────────────
-function ProjectCard({ p, index }) {
-    const { ref, visible } = useReveal();
-    return (_jsxs("div", { ref: ref, className: `group relative bg-zinc-900 border border-white/5 rounded-xl p-6 flex flex-col hover:border-blue-400/20 hover:-translate-y-1 hover:shadow-2xl hover:shadow-black/40 transition-all duration-300 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`, style: { transitionDelay: `${index * 70}ms` }, children: [_jsx("div", { className: "absolute inset-0 rounded-xl bg-gradient-to-br from-blue-400/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" }), _jsx("div", { className: "flex justify-between items-start mb-4", children: _jsx("a", { href: p.github, target: "_blank", rel: "noopener noreferrer", className: "text-zinc-600 hover:text-blue-400 transition-colors ml-auto", "aria-label": `${p.name} on GitHub`, children: _jsx("svg", { viewBox: "0 0 24 24", fill: "currentColor", width: "16", height: "16", children: _jsx("path", { d: "M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12Z" }) }) }) }), _jsx("h3", { className: "font-semibold text-white mb-2", children: p.name }), _jsx("p", { className: "text-sm text-zinc-400 leading-relaxed flex-1", children: p.description }), _jsx("div", { className: "mt-4 flex flex-wrap items-center gap-2", children: p.live ? (_jsxs("a", { href: p.live, target: "_blank", rel: "noopener noreferrer", className: "inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-400/10 px-3 py-1.5 text-sm font-medium text-blue-300 transition hover:border-blue-400/60 hover:bg-blue-400/20", children: [_jsx("span", { children: "Live Preview" }), _jsxs("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className: "h-4 w-4", children: [_jsx("path", { d: "M7 17L17 7", strokeLinecap: "round", strokeLinejoin: "round" }), _jsx("path", { d: "M8 7h8v8", strokeLinecap: "round", strokeLinejoin: "round" })] })] })) : null }), _jsx("div", { className: "flex flex-wrap gap-1.5 mt-4", children: p.tags.map((t) => (_jsx("span", { className: "font-mono text-xs text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded", children: t }, t))) })] }));
-}
-// ── Projects Section ──────────────────────────────────────────────────────────
-function ProjectsSection() {
-    return (_jsx("section", { id: "projects", className: "py-28 px-6 bg-zinc-950/50", children: _jsxs("div", { className: "max-w-5xl mx-auto", children: [_jsx(SectionHeader, { tag: "02. Projects", title: "Things I've built" }), _jsx("div", { className: "grid sm:grid-cols-2 lg:grid-cols-3 gap-4", children: PROJECTS.map((p, i) => (_jsx(ProjectCard, { p: p, index: i }, p.name))) })] }) }));
-}
-// ── Experience Item ───────────────────────────────────────────────────────────
-function ExperienceItem({ exp, index, }) {
-    const { ref, visible } = useReveal();
-    return (_jsxs("div", { ref: ref, className: `relative pb-12 last:pb-0 transition-all duration-700 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`, style: { transitionDelay: `${index * 100}ms` }, children: [_jsx("div", { className: "absolute -left-[29px] top-1.5 w-3 h-3 rounded-full bg-blue-400 ring-4 ring-blue-400/20 ring-offset-1 ring-offset-black" }), _jsx("span", { className: "font-mono text-xs text-blue-400 tracking-widest uppercase", children: exp.date }), _jsx("h3", { className: "text-lg font-semibold mt-1", children: exp.role }), _jsxs("p", { className: "text-sm text-zinc-400 mb-3", children: [exp.company, " \u00B7 ", exp.location] }), _jsx("ul", { className: "space-y-1.5", children: exp.bullets.map((b) => (_jsxs("li", { className: "text-sm text-zinc-400 flex gap-2", children: [_jsx("span", { className: "text-blue-400 mt-0.5 shrink-0", children: "\u25B8" }), b] }, b))) })] }));
-}
-// ── Experience Section ────────────────────────────────────────────────────────
-function ExperienceSection() {
-    return (_jsx("section", { id: "experience", className: "py-28 px-6", children: _jsxs("div", { className: "max-w-5xl mx-auto", children: [_jsx(SectionHeader, { tag: "03. Experience", title: "Where I've worked" }), _jsx("div", { className: "relative pl-6 border-l border-white/10", children: EXPERIENCES.map((exp, i) => (_jsx(ExperienceItem, { exp: exp, index: i }, exp.company))) })] }) }));
-}
-// ── Extras Section ────────────────────────────────────────────────────────────
-function ExtrasSection() {
-    const { ref, visible } = useReveal();
-    return (_jsx("section", { className: "py-20 px-6 bg-zinc-950/50", children: _jsxs("div", { className: "max-w-5xl mx-auto", children: [_jsx(SectionHeader, { tag: "04. Extra", title: "Beyond the code" }), _jsx("div", { ref: ref, className: `space-y-4 transition-all duration-700 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`, children: _jsx("ul", { className: "space-y-4", children: EXTRAS.map((e) => (_jsxs("li", { className: "flex gap-3 text-sm text-zinc-400 leading-relaxed", children: [_jsx("span", { className: "text-blue-400 mt-0.5 shrink-0", children: "\u25B8" }), e] }, e))) }) })] }) }));
-}
-// ── Contact Section ───────────────────────────────────────────────────────────
 function ContactSection() {
-    const { ref, visible } = useReveal();
-    const socials = [
+    const contactItems = [
         {
             label: "GitHub",
-            href: "https://github.com/sahiljadhav7",
-            icon: (_jsx("svg", { viewBox: "0 0 24 24", fill: "currentColor", width: "20", height: "20", children: _jsx("path", { d: "M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12Z" }) })),
+            href: site.socials.github,
+            icon: _jsx(Github, { className: "h-4 w-4" }),
         },
         {
             label: "LinkedIn",
-            href: "https://www.linkedin.com/in/sahil-jadhav1/",
-            icon: (_jsx("svg", { viewBox: "0 0 24 24", fill: "currentColor", width: "20", height: "20", children: _jsx("path", { d: "M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" }) })),
+            href: site.socials.linkedin,
+            icon: _jsx(ExternalLink, { className: "h-4 w-4" }),
+        },
+        {
+            label: "Twitter",
+            href: site.socials.twitter,
+            icon: _jsx(ExternalLink, { className: "h-4 w-4" }),
+        },
+        {
+            label: "Mail",
+            href: site.socials.email,
+            icon: _jsx(Mail, { className: "h-4 w-4" }),
+        },
+        {
+            label: "Resume",
+            href: site.socials.resume,
+            icon: _jsx(FilePenLine, { className: "h-4 w-4" }),
         },
     ];
-    return (_jsx("section", { id: "contact", className: "py-28 px-6", children: _jsx("div", { className: "max-w-lg mx-auto text-center", children: _jsxs("div", { ref: ref, className: `transition-all duration-700 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`, children: [_jsx("span", { className: "font-mono text-xs text-blue-400 tracking-widest uppercase", children: "05. Contact" }), _jsx("h2", { className: "text-3xl md:text-4xl font-bold mt-3 mb-4 tracking-tight", children: "Let's build something together" }), _jsx("p", { children: "jadhavsahilcodes@gmail(dot)com" }), _jsx("div", { className: "flex justify-center gap-6 mt-12", children: socials.map((s) => (_jsx("a", { href: s.href, target: "_blank", rel: "noopener noreferrer", "aria-label": s.label, className: "text-zinc-500 hover:text-blue-400 hover:-translate-y-0.5 transition-all", children: s.icon }, s.label))) })] }) }) }));
+    return (_jsxs("section", { id: "contact", children: [_jsx(SectionHeader, { title: "Contact" }), _jsx(Shell, { className: "py-1", children: _jsx("div", { className: "grid grid-cols-2 sm:grid-cols-5", children: contactItems.map((item) => {
+                        const isMail = item.href.startsWith("mailto:");
+                        const isExternal = !item.href.startsWith("/") && !item.href.startsWith("#") && !isMail;
+                        return (_jsx("a", { href: item.href, target: isExternal ? "_blank" : undefined, rel: isExternal ? "noreferrer" : undefined, className: "group border-b border-r border-[var(--line)] p-4 transition-colors hover:bg-[var(--hover)] sm:min-h-[126px]", children: _jsxs("div", { className: "flex h-full flex-col justify-between gap-8", children: [_jsx("span", { className: "inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--chip)] text-[var(--fg)]", children: item.icon }), _jsxs("div", { className: "flex items-center justify-between gap-3", children: [_jsx("span", { className: "text-[13px] text-[var(--fg)]", children: item.label }), _jsx(ArrowUpRight, { className: "h-4 w-4 text-[var(--soft)] transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" })] })] }) }, item.label));
+                    }) }) })] }));
 }
-// ── Footer ────────────────────────────────────────────────────────────────────
-function Footer() {
-    return (_jsxs("footer", { className: "border-t border-white/5 py-6 text-center font-mono text-xs text-zinc-600", children: ["Designed & Built by ", _jsx("span", { className: "text-blue-400", children: "Sahil Jadhav" }), " \u00B7 2025"] }));
+function ProjectTabs({ active, onChange, }) {
+    return (_jsx("div", { className: "inline-flex flex-wrap rounded-lg border border-[var(--line)] bg-[var(--chip)] p-0.5", children: projectTabs.map((tab) => (_jsx("button", { type: "button", onClick: () => onChange(tab), className: cn("rounded-md px-3 py-1.5 text-[12px] transition-colors", active === tab
+                ? "bg-[var(--fg)] font-semibold text-[var(--bg)] shadow-sm"
+                : "text-[var(--muted)] hover:text-[var(--fg)]"), children: tab }, tab))) }));
 }
-// ── App ───────────────────────────────────────────────────────────────────────
+function ProjectCard({ project }) {
+    const [open, setOpen] = useState(false);
+    const [failed, setFailed] = useState(false);
+    return (_jsxs(motion.div, { layout: true, initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: 12 }, transition: { duration: 0.25, ease: "easeOut" }, className: "group rounded-xl border border-[var(--line)] bg-[var(--card)] p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-[var(--soft)] hover:shadow-md", children: [_jsxs("div", { className: "relative h-48 w-full overflow-hidden rounded-lg border border-[var(--line)] bg-gradient-to-br from-[var(--chip)] via-[var(--card)] to-[color:rgb(from_var(--bg)_r_g_b_/_0.4)]", children: [_jsx("div", { className: "bg-stripes absolute inset-0 opacity-20" }), _jsx(AnimatePresence, { children: _jsxs(motion.div, { initial: { opacity: 0 }, animate: { opacity: 0 }, whileHover: { opacity: 1 }, className: "pointer-events-none absolute inset-0", children: [_jsx("span", { className: "absolute left-2.5 top-2.5 h-4 w-4 border-l border-t border-[var(--fg)]" }), _jsx("span", { className: "absolute right-2.5 top-2.5 h-4 w-4 border-r border-t border-[var(--fg)]" }), _jsx("span", { className: "absolute bottom-2.5 left-2.5 h-4 w-4 border-b border-l border-[var(--fg)]" }), _jsx("span", { className: "absolute bottom-2.5 right-2.5 h-4 w-4 border-b border-r border-[var(--fg)]" }), _jsxs("div", { className: "absolute left-3 top-3 flex items-center gap-2 font-mono text-[10px] text-[var(--fg)]", children: [_jsx("span", { className: "h-2 w-2 animate-pulse rounded-full bg-rose-500" }), _jsx("span", { children: "REC" })] }), _jsx("div", { className: "absolute right-3 top-3 font-mono text-[10px] text-[var(--fg)]", children: "ISO 400" })] }) }), _jsxs("div", { className: "absolute left-4 top-4 flex flex-wrap gap-2", children: [project.status ? (_jsxs("span", { className: cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10.5px]", project.status === "Live"
+                                    ? "bg-emerald-500/20 text-emerald-300"
+                                    : "bg-amber-500/20 text-amber-300"), children: [_jsx("span", { className: cn("h-2 w-2 rounded-full", project.status === "Live" ? "animate-pulse bg-emerald-400" : "bg-amber-300") }), project.status] })) : null, project.featured ? (_jsx("span", { className: "rounded-full bg-amber-400/10 px-2.5 py-1 font-mono text-[10.5px] text-amber-500", children: "Featured" })) : null] }), _jsx("div", { className: "absolute -bottom-3 -right-6 h-32 w-56 overflow-hidden rounded-lg border-4 border-[color:rgb(from_var(--bg)_r_g_b_/_0.4)] shadow-xl transition-all duration-300 group-hover:-bottom-1 group-hover:-right-4 sm:h-36 sm:w-64", children: failed ? (_jsx("div", { className: "flex h-full w-full items-center justify-center bg-[var(--chip)] font-serif text-2xl text-[var(--fg)]", children: project.title })) : (_jsx("img", { src: project.image, alt: `${project.title} screenshot`, className: "h-full w-full object-cover", onError: () => setFailed(true) })) })] }), _jsxs("div", { className: "mt-5 flex items-start justify-between gap-3", children: [_jsx("h3", { className: "text-[16px] font-semibold tracking-wide text-[var(--fg)]", children: project.title }), _jsx("span", { className: "font-mono text-xs text-[var(--soft)]", children: project.year })] }), _jsx("p", { className: "mt-2 line-clamp-4 text-[13px] text-[var(--muted)]", children: project.blurb }), project.story ? (_jsxs("div", { className: "mt-4", children: [_jsxs("button", { type: "button", onClick: () => setOpen((current) => !current), className: "inline-flex items-center gap-2 text-[12px] text-[var(--muted)] transition-colors hover:text-[var(--fg)]", children: [_jsx("span", { children: open ? "Hide engineering details" : "Show engineering details" }), open ? _jsx(ChevronUp, { className: "h-3.5 w-3.5" }) : _jsx(ChevronDown, { className: "h-3.5 w-3.5" })] }), _jsx(AnimatePresence, { initial: false, children: open ? (_jsx(motion.div, { initial: { height: 0, opacity: 0 }, animate: { height: "auto", opacity: 1 }, exit: { height: 0, opacity: 0 }, transition: { duration: 0.2, ease: "easeOut" }, className: "overflow-hidden", children: _jsx("div", { className: "mt-3 border-l-2 border-l-[var(--soft)] bg-[color:rgb(from_var(--chip)_r_g_b_/_0.6)] px-4 py-3 text-[12px] leading-relaxed text-[var(--muted)]", children: project.story.split("\n\n").map((paragraph) => (_jsx("p", { className: "mb-3 last:mb-0", children: paragraph }, paragraph))) }) })) : null })] })) : null, _jsx("div", { className: "mt-5 flex flex-wrap gap-2", children: project.stack.map((item) => (_jsx("span", { className: "rounded border border-[color:rgb(from_var(--line)_r_g_b_/_0.3)] bg-[var(--chip)] px-2 py-0.5 font-mono text-[10.5px] text-[var(--muted)]", children: item }, item))) }), _jsxs("div", { className: "mt-4 flex items-center gap-3", children: [project.links.live ? (_jsx("a", { href: project.links.live, target: "_blank", rel: "noreferrer", className: "text-[var(--muted)] transition-all duration-200 hover:-translate-y-0.5 hover:text-[var(--fg)]", "aria-label": `${project.title} live`, children: _jsx(Globe, { className: "h-4 w-4" }) })) : null, project.links.source ? (_jsx("a", { href: project.links.source, target: "_blank", rel: "noreferrer", className: "text-[var(--muted)] transition-all duration-200 hover:-translate-y-0.5 hover:text-[var(--fg)]", "aria-label": `${project.title} source`, children: _jsx(GitHubWordmark, {}) })) : null] })] }));
+}
+function ProjectsSection({ routeOnly = false }) {
+    const [activeTab, setActiveTab] = useState("All");
+    const [query, setQuery] = useState("");
+    const filtered = useMemo(() => {
+        return site.projects.filter((project) => {
+            const matchesCategory = activeTab === "All" ||
+                project.categories.some((category) => category === activeTab);
+            const matchesQuery = !query ||
+                `${project.title} ${project.blurb} ${project.stack.join(" ")}`
+                    .toLowerCase()
+                    .includes(query.toLowerCase());
+            return matchesCategory && matchesQuery;
+        });
+    }, [activeTab, query]);
+    return (_jsxs("section", { id: "projects", children: [_jsx(SectionHeader, { title: "Projects", aside: routeOnly ? null : _jsx(ProjectTabs, { active: activeTab, onChange: setActiveTab }) }), _jsxs(Shell, { className: "py-7 sm:py-8", children: [routeOnly ? (_jsxs("div", { className: "flex flex-col gap-4 border-b border-[var(--line)] pb-5 sm:flex-row sm:items-center sm:justify-between", children: [_jsxs("div", { className: "relative w-full sm:max-w-md", children: [_jsx(Search, { className: "pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--soft)]" }), _jsx("input", { value: query, onChange: (event) => setQuery(event.target.value), placeholder: "Search projects", className: "w-full rounded-lg border border-[var(--line)] bg-[var(--chip)] py-2.5 pl-9 pr-9 text-[13px] text-[var(--fg)] outline-none transition-colors placeholder:text-[var(--soft)] focus:border-[var(--soft)]" }), query ? (_jsx("button", { type: "button", onClick: () => setQuery(""), className: "absolute right-3 top-1/2 -translate-y-1/2 text-[var(--soft)]", "aria-label": "Clear search", children: _jsx(X, { className: "h-4 w-4" }) })) : null] }), _jsx(ProjectTabs, { active: activeTab, onChange: setActiveTab })] })) : null, _jsx(motion.div, { layout: true, className: cn("mt-5 grid gap-4 sm:grid-cols-2", routeOnly ? "" : ""), children: _jsx(AnimatePresence, { mode: "popLayout", children: filtered.map((project) => (_jsx(ProjectCard, { project: project }, project.title))) }) })] })] }));
+}
+function ExperienceSection() {
+    const metrics = [
+        { value: "5+", label: "Projects" },
+        { value: "100%", label: "TypeScript" },
+        { value: "10+", label: "APIs" },
+        { value: "500+", label: "Commits" },
+    ];
+    return (_jsxs("section", { id: "experience", children: [_jsx(SectionHeader, { title: "Experience" }), _jsx(Shell, { className: "py-2", children: site.experience.map((job) => (_jsxs("div", { className: "border-t border-[var(--line)] py-5 first:border-t-0", children: [_jsxs("div", { className: "flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between", children: [_jsxs("div", { children: [_jsxs("h3", { className: "text-[16px] font-semibold tracking-wide text-[var(--fg)]", children: [job.role, " \u00B7", " ", job.url ? (_jsxs("a", { href: job.url, target: "_blank", rel: "noreferrer", className: "inline-flex items-center gap-1.5 hover:text-[var(--muted)]", children: [job.company, _jsx(ExternalLink, { className: "h-3.5 w-3.5" })] })) : (job.company)] }), _jsx("p", { className: "mt-2 text-[13.5px] text-[var(--muted)]", children: job.blurb })] }), _jsx("span", { className: "font-mono text-[11px] text-[var(--soft)]", children: job.period })] }), _jsx("div", { className: "mt-4 grid grid-cols-2 divide-x divide-[var(--line)] overflow-hidden rounded-lg border border-[var(--line)] bg-[color:rgb(from_var(--chip)_r_g_b_/_0.6)] sm:grid-cols-4", children: metrics.map((metric) => (_jsxs("div", { className: "px-4 py-3", children: [_jsx("div", { className: "text-[15px] font-bold text-[var(--fg)]", children: metric.value }), _jsx("div", { className: "font-mono text-[9px] uppercase tracking-widest text-[var(--soft)]", children: metric.label })] }, metric.label))) })] }, `${job.company}-${job.period}`))) })] }));
+}
+function TechStackSection() {
+    const [activeTab, setActiveTab] = useState("All");
+    const filteredSkills = useMemo(() => activeTab === "All"
+        ? site.skills
+        : site.skills.filter((skill) => skill.category === activeTab), [activeTab]);
+    return (_jsxs("section", { id: "skills", children: [_jsx(SectionHeader, { title: "Tech Stack", aside: _jsx("span", { className: "font-mono text-[10px] uppercase tracking-widest text-[var(--soft)]", children: "( select tab to filter )" }) }), _jsxs(Shell, { className: "py-7 sm:py-8", children: [_jsx("div", { className: "flex flex-wrap gap-2", children: techTabs.map((tab) => (_jsxs("button", { type: "button", onClick: () => setActiveTab(tab), className: cn("inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-[12px] transition-all duration-200", activeTab === tab
+                                ? "border-[var(--fg)] bg-[var(--fg)] text-[var(--bg)]"
+                                : "border-[var(--line)] bg-[var(--chip)] text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--fg)]"), children: [techTabIcons[tab], _jsx("span", { children: tab })] }, tab))) }), _jsx(motion.div, { layout: true, className: "mt-5 flex flex-wrap gap-2.5", children: _jsx(AnimatePresence, { mode: "popLayout", children: filteredSkills.map((skill) => (_jsxs(motion.span, { layout: true, initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: 10 }, transition: { type: "spring", stiffness: 300, damping: 25 }, className: "group inline-flex items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--card)] px-3 py-1.5 font-mono text-[12px] text-[var(--muted)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--fg)] hover:bg-[var(--fg)] hover:text-[var(--bg)]", children: [_jsx("span", { className: "inline-flex h-4 w-4 items-center justify-center rounded-full border border-current text-[9px] transition-all group-hover:brightness-110", children: skill.name.slice(0, 1) }), skill.name] }, skill.name))) }) })] })] }));
+}
+function WritingSection() {
+    return (_jsxs("section", { id: "writing", children: [_jsx(SectionHeader, { title: "Writing", aside: _jsxs("a", { href: site.socials.medium, target: "_blank", rel: "noreferrer", className: "inline-flex items-center gap-2 font-mono text-[11px] text-[var(--muted)] transition-colors hover:text-[var(--fg)]", children: [_jsx("span", { children: "Medium" }), _jsx("span", { children: "medium.com" }), _jsx(ArrowUpRight, { className: "h-3.5 w-3.5" })] }) }), _jsx(Shell, { className: "divide-y divide-[var(--line)]", children: site.writing.map((post) => (_jsxs("a", { href: post.url, target: "_blank", rel: "noreferrer", className: "flex flex-col gap-3 px-0 py-5 transition-colors hover:bg-[var(--hover)] sm:flex-row sm:items-start sm:gap-5", children: [_jsx("div", { className: "w-20 shrink-0 font-mono text-[11px] text-[var(--soft)]", children: new Date(post.date).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "2-digit",
+                                year: "numeric",
+                            }) }), _jsxs("div", { className: "min-w-0 flex-1", children: [_jsx("h3", { className: "font-serif text-[18px] text-[var(--fg)] transition-colors hover:text-[var(--muted)]", children: post.title }), _jsx("p", { className: "mt-1 line-clamp-2 text-[13px] text-[var(--muted)]", children: post.summary })] }), _jsxs("div", { className: "flex items-center gap-2 text-[12px] text-[var(--muted)]", children: [_jsx("span", { children: post.readingTime ?? "Read" }), _jsx(ArrowUpRight, { className: "h-4 w-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" })] })] }, post.title))) })] }));
+}
+function GitHubActivitySection() {
+    const { weeks, monthLabels, opacitySteps } = useGithubHeatmap(site.github.username, site.github.contributionsLastYear);
+    return (_jsxs("section", { id: "github", children: [_jsx(SectionHeader, { title: "GitHub Activity", aside: _jsxs("a", { href: `https://github.com/${site.github.username}`, target: "_blank", rel: "noreferrer", className: "font-mono text-[11px] text-[var(--muted)] transition-colors hover:text-[var(--fg)]", children: ["@", site.github.username] }) }), _jsx(Shell, { className: "py-7 sm:py-8", children: _jsx("div", { className: "overflow-x-auto", children: _jsxs("div", { className: "min-w-[640px]", children: [_jsx("div", { className: "mb-2 grid grid-cols-[repeat(53,minmax(0,1fr))] gap-[3px] pl-10", children: Array.from({ length: 53 }, (_, index) => {
+                                    const label = monthLabels.find((item) => item.index === index)?.label;
+                                    return (_jsx("span", { className: "font-mono text-[10px] text-[var(--soft)]", children: label ?? "" }, `month-${index}`));
+                                }) }), _jsxs("div", { className: "flex gap-3", children: [_jsx("div", { className: "grid grid-rows-7 gap-[3px] pt-[2px] font-mono text-[10px] text-[var(--soft)]", children: ["S", "M", "T", "W", "T", "F", "S"].map((day) => (_jsx("span", { className: "h-[10px]", children: day }, day))) }), _jsx("div", { className: "grid grid-flow-col grid-rows-7 gap-[3px]", children: weeks.map((week) => (_jsx(Fragment, { children: week.days.map((cell) => (_jsx("div", { title: `${cell.date}: ${cell.count} contributions`, className: "size-[10px] rounded-[2px] bg-[var(--fg)] transition-transform duration-200 hover:scale-125", style: { opacity: opacitySteps[cell.level] } }, cell.date))) }, week.weekIndex))) })] }), _jsxs("div", { className: "mt-4 flex items-center justify-end gap-2 font-mono text-[10px] text-[var(--soft)]", children: [_jsx("span", { children: "Less" }), opacitySteps.map((opacity) => (_jsx("span", { className: "size-[10px] rounded-[2px] bg-[var(--fg)]", style: { opacity } }, opacity))), _jsx("span", { children: "More" })] })] }) }) })] }));
+}
+function FooterSection() {
+    const [quoteIndex, setQuoteIndex] = useState(0);
+    const time = useClock();
+    useEffect(() => {
+        const id = window.setInterval(() => {
+            setQuoteIndex((current) => (current + 1) % QUOTES.length);
+        }, 6000);
+        return () => window.clearInterval(id);
+    }, []);
+    return (_jsxs("footer", { children: [_jsx(SectionHeader, { title: "Scrolled Too Far" }), _jsxs(Shell, { className: "flex flex-col items-start justify-between gap-4 py-7 sm:flex-row sm:items-center", children: [_jsx("p", { className: "max-w-[480px] text-[13.5px] text-[var(--muted)]", children: "Still here? That usually means we should talk about the product, the role, or the next thing worth building." }), _jsxs("a", { href: "/#contact", className: "inline-flex items-center gap-2 rounded-lg bg-[var(--fg)] px-4 py-2 text-[13px] text-[var(--bg)] transition-all duration-200 hover:-translate-y-0.5", children: ["Let's Talk", _jsx(ArrowUpRight, { className: "h-4 w-4" })] })] }), _jsx(GapBand, {}), _jsx("div", { className: "border-y border-[var(--line)]", children: _jsx(Shell, { className: "flex min-h-[160px] items-center justify-center py-8 text-center", children: _jsx(AnimatePresence, { mode: "wait", children: _jsxs(motion.div, { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -10 }, transition: { duration: 0.5, ease: "easeOut" }, className: "max-w-[560px]", children: [_jsx("p", { className: "font-serif text-3xl text-[var(--soft)]", children: "\"" }), _jsx("p", { className: "font-serif text-[20px] italic text-[var(--fg)] sm:text-[22px]", children: QUOTES[quoteIndex]?.text }), _jsx("p", { className: "mt-4 font-mono text-[10px] uppercase tracking-[0.3em] text-[var(--soft)]", children: QUOTES[quoteIndex]?.author })] }, quoteIndex) }) }) }), _jsx(GapBand, { h: "h-5" }), _jsx("div", { className: "border-t border-[var(--line)]", children: _jsxs(Shell, { className: "flex flex-col gap-2 py-4 text-[12px] text-[var(--muted)] sm:flex-row sm:items-center sm:justify-between", children: [_jsxs("p", { children: ["Designed & Developed by ", site.name] }), _jsxs("p", { children: ["\u00A9 2026 ", site.name] }), _jsxs("div", { className: "flex items-center gap-2", children: [_jsx("span", { className: "h-2 w-2 animate-pulse rounded-full bg-emerald-500" }), _jsx("span", { children: site.location }), _jsx("span", { children: time })] })] }) })] }));
+}
+function SideIndex({ activeId }) {
+    return (_jsx("div", { className: "fixed left-[calc(50%+410px)] top-[26vh] hidden xl:block", children: _jsx("div", { className: "space-y-3", children: sideIndexItems.map((item) => {
+                const active = activeId === item.id;
+                return (_jsxs("button", { type: "button", onClick: () => navigateTo(`/#${item.id}`), className: "group flex items-center gap-2", children: [_jsx("span", { className: cn("h-px bg-[var(--fg)] transition-all duration-200", active ? "w-4" : "w-0 group-hover:w-2") }), _jsx("span", { className: cn("text-[12px] transition-colors", active
+                                ? "font-semibold text-[var(--fg)]"
+                                : "text-[var(--soft)] group-hover:text-[var(--fg)]"), children: item.label })] }, item.id));
+            }) }) }));
+}
+function CommandPalette({ open, onClose, onToggleTheme, }) {
+    const [selectedIndex, setSelectedIndex] = useState(0);
+    const commands = useMemo(() => [
+        { id: "about", label: "Go to About", hint: "/", action: () => navigateTo("/#about") },
+        {
+            id: "projects",
+            label: "Go to Projects",
+            hint: "/projects",
+            action: () => navigateTo("/projects"),
+        },
+        {
+            id: "experience",
+            label: "Go to Experience",
+            hint: "/experience",
+            action: () => navigateTo("/experience"),
+        },
+        {
+            id: "contact",
+            label: "Go to Contact",
+            hint: "/contact",
+            action: () => navigateTo("/contact"),
+        },
+        {
+            id: "writing",
+            label: "Go to Writing",
+            hint: "/writing",
+            action: () => navigateTo("/writing"),
+        },
+        {
+            id: "github",
+            label: "Open GitHub",
+            hint: "external",
+            action: () => window.open(site.socials.github, "_blank", "noreferrer"),
+        },
+        {
+            id: "linkedin",
+            label: "Open LinkedIn",
+            hint: "external",
+            action: () => window.open(site.socials.linkedin, "_blank", "noreferrer"),
+        },
+        {
+            id: "theme",
+            label: "Toggle Theme",
+            hint: "light/dark",
+            action: () => onToggleTheme(),
+        },
+    ], [onToggleTheme]);
+    useEffect(() => {
+        if (!open)
+            return;
+        setSelectedIndex(0);
+        const onKeyDown = (event) => {
+            if (event.key === "ArrowDown") {
+                event.preventDefault();
+                setSelectedIndex((current) => (current + 1) % commands.length);
+            }
+            if (event.key === "ArrowUp") {
+                event.preventDefault();
+                setSelectedIndex((current) => (current - 1 + commands.length) % commands.length);
+            }
+            if (event.key === "Enter") {
+                event.preventDefault();
+                commands[selectedIndex]?.action();
+                onClose();
+            }
+        };
+        window.addEventListener("keydown", onKeyDown);
+        return () => window.removeEventListener("keydown", onKeyDown);
+    }, [commands, onClose, open, selectedIndex]);
+    return (_jsx(AnimatePresence, { children: open ? (_jsx(motion.div, { className: "fixed inset-0 z-50 flex items-start justify-center bg-black/60 px-4 pt-[14vh]", initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 }, onClick: onClose, children: _jsxs(motion.div, { initial: { opacity: 0, y: 14 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: 14 }, transition: { duration: 0.2, ease: "easeOut" }, onClick: (event) => event.stopPropagation(), className: "w-full max-w-xl overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--card)] shadow-2xl", children: [_jsx("div", { className: "border-b border-[var(--line)] px-4 py-3 font-mono text-[11px] text-[var(--soft)]", children: "Command Palette" }), _jsx("div", { className: "p-2", children: commands.map((command, index) => (_jsxs("button", { type: "button", onClick: () => {
+                                command.action();
+                                onClose();
+                            }, className: cn("flex w-full items-center justify-between rounded-lg px-3 py-3 text-left font-mono text-[12px] transition-colors", selectedIndex === index
+                                ? "bg-[var(--hover)] text-[var(--fg)]"
+                                : "text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--fg)]"), children: [_jsx("span", { children: command.label }), _jsx("span", { className: "text-[var(--soft)]", children: command.hint })] }, command.id))) })] }) })) : null }));
+}
+function ConfettiOverlay({ burst }) {
+    if (!burst)
+        return null;
+    return (_jsx("div", { className: "pointer-events-none fixed inset-0 z-[60] overflow-hidden", children: Array.from({ length: 28 }, (_, index) => (_jsx("span", { className: "confetti-piece", style: {
+                left: `${(index * 13) % 100}%`,
+                animationDelay: `${(index % 8) * 0.06}s`,
+                ["--drift"]: `${(index % 5) - 2}vw`,
+                ["--spin"]: `${(index % 2 === 0 ? 1 : -1) * 360}deg`,
+            } }, `${burst}-${index}`))) }));
+}
+function HomePage({ onOpenPalette }) {
+    return (_jsxs(motion.main, { ...pageTransition, children: [_jsx(Hero, { onOpenPalette: onOpenPalette }), _jsx(GapBand, {}), _jsx(AboutSection, {}), _jsx(GapBand, {}), _jsx(ContactSection, {}), _jsx(GapBand, {}), _jsx(ProjectsSection, {}), _jsx(GapBand, {}), _jsx(ExperienceSection, {}), _jsx(GapBand, {}), _jsx(TechStackSection, {}), _jsx(GapBand, {}), _jsx(WritingSection, {}), _jsx(GapBand, {}), _jsx(GitHubActivitySection, {}), _jsx(GapBand, {}), _jsx(FooterSection, {})] }));
+}
+function RoutePage({ title, children, }) {
+    return (_jsxs(motion.main, { ...pageTransition, children: [_jsx(Shell, { className: "py-8", children: _jsx("p", { className: "font-mono text-[10px] uppercase tracking-widest text-[var(--soft)]", children: title }) }), children, _jsx(GapBand, {}), _jsx(FooterSection, {})] }));
+}
 export default function App() {
-    return (_jsxs("div", { className: "min-h-screen text-white", children: [_jsx(ShaderAnimation, {}), _jsx(Navbar1, {}), _jsx("div", { id: "hero", className: "pt-16", children: _jsx(ResumePage, {}) }), _jsx(AboutSection, {}), _jsx(ProjectsSection, {}), _jsx(ExperienceSection, {}), _jsx(ExtrasSection, {}), _jsx(ContactSection, {}), _jsx(Footer, {})] }));
+    const route = useRoute();
+    const { theme, toggleTheme } = useThemeMode();
+    const [paletteOpen, setPaletteOpen] = useState(false);
+    const activeSection = useActiveSection(route === "/");
+    const burst = useKonamiAchievement();
+    useOneko();
+    useCommandPaletteShortcuts(() => setPaletteOpen(true), () => setPaletteOpen(false));
+    return (_jsxs("div", { className: "min-h-screen bg-[var(--bg)] text-[var(--fg)]", children: [_jsx(Nav, { route: route, activeSection: activeSection, theme: theme, toggleTheme: toggleTheme, onOpenPalette: () => setPaletteOpen(true) }), route === "/" ? _jsx(SideIndex, { activeId: activeSection }) : null, _jsx(AnimatePresence, { mode: "wait", children: _jsxs(motion.div, { children: [route === "/" ? _jsx(HomePage, { onOpenPalette: () => setPaletteOpen(true) }) : null, route === "/projects" ? (_jsx(RoutePage, { title: "Projects", children: _jsx(ProjectsSection, { routeOnly: true }) })) : null, route === "/experience" ? (_jsx(RoutePage, { title: "Experience", children: _jsx(ExperienceSection, {}) })) : null, route === "/contact" ? (_jsx(RoutePage, { title: "Contact", children: _jsx(ContactSection, {}) })) : null, route === "/writing" ? (_jsx(RoutePage, { title: "Writing", children: _jsx(WritingSection, {}) })) : null] }, route) }), _jsx(CommandPalette, { open: paletteOpen, onClose: () => setPaletteOpen(false), onToggleTheme: toggleTheme }), _jsx(ConfettiOverlay, { burst: burst })] }));
 }

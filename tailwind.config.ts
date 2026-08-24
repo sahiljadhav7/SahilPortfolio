@@ -8,8 +8,10 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Amiamie', 'Inter', 'system-ui', 'sans-serif'],
+        serif: ['Instrument Serif', 'Georgia', 'serif'],
         mono: ['JetBrains Mono', 'monospace'],
+        accent: ['Amiamie-Round', 'Amiamie', 'sans-serif'],
       },
     },
   },

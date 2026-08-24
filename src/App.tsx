@@ -1,365 +1,1604 @@
-import { useEffect, useRef, useState } from "react";
-import ResumePage from "@/components/ui/portfolio-hero-with-paper-shaders";
-import { Navbar1 } from "@/components/ui/navbar-1";
-import { ShaderAnimation } from "@/components/ui/shader-animation";
-import { PROJECTS, EXPERIENCES, EXTRAS, SKILLS } from "@/data";
+import {
+  ArrowUpRight,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  Github,
+  Globe,
+  Mail,
+  MapPin,
+  Menu,
+  Moon,
+  Search,
+  Sun,
+  X,
+  Briefcase,
+  Hammer,
+  Layers3,
+  Database,
+  Code2,
+  FilePenLine,
+} from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import {
+  Fragment,
+  type CSSProperties,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { cn } from "@/lib/utils";
+import { HEADLINE_TITLES, QUOTES, site, type ProjectCategory } from "@/config/site";
+import { useGithubHeatmap } from "@/hooks/useGithubHeatmap";
 
-// ── Shared reveal hook ───────────────────────────────────────────────────────
-function useReveal() {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true);
-          observer.unobserve(el);
-        }
-      },
-      { threshold: 0.08, rootMargin: "0px 0px -60px 0px" },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-  return { ref, visible };
+type RoutePath = "/" | "/projects" | "/experience" | "/contact" | "/writing";
+type ThemeMode = "dark" | "light";
+type TechCategory =
+  | "All"
+  | "Languages"
+  | "Frontend"
+  | "Backend"
+  | "Databases"
+  | "DevOps & Tools";
+
+type NavItem = {
+  label: string;
+  href: string;
+  type: "route" | "section";
+};
+
+type Command = {
+  id: string;
+  label: string;
+  hint?: string;
+  action: () => void;
+};
+
+const navItems: NavItem[] = [
+  { label: "About", href: "/#about", type: "section" },
+  { label: "Projects", href: "/#projects", type: "section" },
+  { label: "Experience", href: "/#experience", type: "section" },
+  { label: "Contact", href: "/#contact", type: "section" },
+  { label: "Writing", href: "/writing", type: "route" },
+];
+
+const sideIndexItems = [
+  { id: "about", label: "About" },
+  { id: "contact", label: "Contact" },
+  { id: "projects", label: "Projects" },
+  { id: "experience", label: "Experience" },
+  { id: "skills", label: "Skills" },
+  { id: "writing", label: "Writing" },
+  { id: "github", label: "GitHub" },
+] as const;
+
+const projectTabs: Array<"All" | ProjectCategory> = [
+  "All",
+  "Frontend",
+  "Backend",
+  "Fullstack",
+];
+
+const techTabs: TechCategory[] = [
+  "All",
+  "Languages",
+  "Frontend",
+  "Backend",
+  "Databases",
+  "DevOps & Tools",
+];
+
+const techTabIcons: Record<TechCategory, ReactNode> = {
+  All: <Layers3 className="h-3.5 w-3.5" />,
+  Languages: <Code2 className="h-3.5 w-3.5" />,
+  Frontend: <Layers3 className="h-3.5 w-3.5" />,
+  Backend: <Hammer className="h-3.5 w-3.5" />,
+  Databases: <Database className="h-3.5 w-3.5" />,
+  "DevOps & Tools": <Briefcase className="h-3.5 w-3.5" />,
+};
+
+const pageTransition = {
+  initial: { opacity: 0, y: 15 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.4, ease: "easeOut" as const },
+};
+
+function normalizePath(pathname: string): RoutePath {
+  if (pathname === "/projects") return "/projects";
+  if (pathname === "/experience") return "/experience";
+  if (pathname === "/contact") return "/contact";
+  if (pathname === "/writing") return "/writing";
+  return "/";
 }
 
-// ── Section Header ────────────────────────────────────────────────────────────
-function SectionHeader({ tag, title }: { tag: string; title: string }) {
-  const { ref, visible } = useReveal();
+function navigateTo(path: string) {
+  if (window.location.pathname + window.location.hash === path) {
+    if (path.includes("#")) {
+      scrollToHash(path.split("#")[1] ?? "");
+    }
+    return;
+  }
+
+  window.history.pushState({}, "", path);
+  window.dispatchEvent(new PopStateEvent("popstate"));
+}
+
+function scrollToHash(id: string) {
+  if (!id) return;
+  const element = document.getElementById(id);
+  if (element) {
+    element.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+function useRoute() {
+  const [route, setRoute] = useState<RoutePath>(() =>
+    normalizePath(window.location.pathname),
+  );
+
+  useEffect(() => {
+    const onChange = () => {
+      setRoute(normalizePath(window.location.pathname));
+      const hash = window.location.hash.replace("#", "");
+      if (hash) {
+        setTimeout(() => scrollToHash(hash), 30);
+      } else {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    };
+
+    window.addEventListener("popstate", onChange);
+    return () => window.removeEventListener("popstate", onChange);
+  }, []);
+
+  return route;
+}
+
+function useThemeMode() {
+  const [theme, setTheme] = useState<ThemeMode>("dark");
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("theme") as ThemeMode | null;
+    const preferred =
+      window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    const nextTheme = saved ?? preferred;
+    document.documentElement.classList.toggle("light", nextTheme === "light");
+    setTheme(nextTheme);
+  }, []);
+
+  const toggleTheme = () => {
+    setTheme((current) => {
+      const next = current === "dark" ? "light" : "dark";
+      document.documentElement.classList.toggle("light", next === "light");
+      window.localStorage.setItem("theme", next);
+      return next;
+    });
+  };
+
+  return { theme, toggleTheme };
+}
+
+function useActiveSection(enabled: boolean) {
+  const [activeId, setActiveId] = useState<string>("about");
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    const sections = sideIndexItems
+      .map((item) => document.getElementById(item.id))
+      .filter(Boolean) as HTMLElement[];
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+        if (visible?.target.id) {
+          setActiveId(visible.target.id);
+        }
+      },
+      { rootMargin: "-20% 0px -55% 0px", threshold: [0.15, 0.3, 0.5] },
+    );
+
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, [enabled]);
+
+  return activeId;
+}
+
+function useOneko() {
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.src = "/oneko.js";
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+      script.remove();
+      document.getElementById("oneko")?.remove();
+    };
+  }, []);
+}
+
+function useKonamiAchievement() {
+  const [burst, setBurst] = useState(0);
+
+  useEffect(() => {
+    const konami = [
+      "ArrowUp",
+      "ArrowUp",
+      "ArrowDown",
+      "ArrowDown",
+      "ArrowLeft",
+      "ArrowRight",
+      "ArrowLeft",
+      "ArrowRight",
+      "b",
+      "a",
+    ];
+    let buffer: string[] = [];
+    let typed = "";
+
+    const trigger = () => {
+      setBurst(Date.now());
+      window.setTimeout(() => setBurst(0), 2200);
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+      buffer = [...buffer, key].slice(-konami.length);
+      typed = `${typed}${key}`.slice(-12);
+
+      if (typed.includes("anurag") || typed.includes("jha")) {
+        trigger();
+        typed = "";
+      }
+
+      if (buffer.join("|") === konami.join("|")) {
+        trigger();
+        buffer = [];
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  return burst;
+}
+
+function useClock() {
+  const [time, setTime] = useState("");
+
+  useEffect(() => {
+    const formatter = new Intl.DateTimeFormat("en-IN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "Asia/Calcutta",
+    });
+
+    const update = () => setTime(formatter.format(new Date()));
+    update();
+    const id = window.setInterval(update, 60000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  return time;
+}
+
+function useCommandPaletteShortcuts(open: () => void, close: () => void) {
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const isMeta = event.metaKey || event.ctrlKey;
+      if (isMeta && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        open();
+      }
+      if (event.key === "Escape") {
+        close();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [close, open]);
+}
+
+function Shell({ children, className }: { children?: ReactNode; className?: string }) {
   return (
     <div
-      ref={ref}
-      className={`mb-14 transition-all duration-700 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
+      className={cn(
+        "mx-auto w-full max-w-[760px] border-x border-dashed border-[var(--line)] px-6 sm:px-8",
+        className,
+      )}
     >
-      <span className="font-mono text-xs text-blue-400 tracking-widest uppercase">
-        {tag}
-      </span>
-      <h2 className="text-3xl md:text-4xl font-bold mt-2 tracking-tight">
-        {title}
-      </h2>
+      {children}
     </div>
   );
 }
 
-// ── About ─────────────────────────────────────────────────────────────────────
-function AboutSection() {
-  const { ref, visible } = useReveal();
-  const skillCategories = Object.entries(SKILLS);
+function GapBand({ h = "h-7" }: { h?: string }) {
   return (
-    <section id="about" className="py-28 px-6">
-      <div className="max-w-5xl mx-auto">
-        <SectionHeader tag="01. About" title="Who I am" />
-        <div className="grid md:grid-cols-2 gap-14 items-start">
-          {/* Bio */}
-          <div
-            ref={ref}
-            className={`transition-all duration-700 delay-100 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
+    <div className={cn("bg-stripes", h)}>
+      <Shell />
+    </div>
+  );
+}
+
+function SectionHeader({
+  title,
+  aside,
+}: {
+  title: string;
+  aside?: ReactNode;
+}) {
+  return (
+    <div className="relative border-y border-[var(--line)] bg-stripes">
+      <span className="absolute left-2 top-2 h-[3px] w-[3px] rounded-full bg-[var(--fg)] opacity-40" />
+      <span className="absolute right-2 top-2 h-[3px] w-[3px] rounded-full bg-[var(--fg)] opacity-40" />
+      <span className="absolute bottom-2 left-2 h-[3px] w-[3px] rounded-full bg-[var(--fg)] opacity-40" />
+      <span className="absolute bottom-2 right-2 h-[3px] w-[3px] rounded-full bg-[var(--fg)] opacity-40" />
+      <Shell className="flex min-h-16 flex-col justify-center gap-3 py-4 sm:min-h-[76px] sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="font-serif text-2xl tracking-wide text-[var(--fg)]">
+          {title}
+        </h2>
+        {aside ? <aside className="text-right">{aside}</aside> : null}
+      </Shell>
+    </div>
+  );
+}
+
+function GitHubWordmark() {
+  return <Github className="h-4 w-4" />;
+}
+
+function ThemeToggle({
+  theme,
+  toggleTheme,
+}: {
+  theme: ThemeMode;
+  toggleTheme: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={toggleTheme}
+      aria-label="Toggle theme"
+      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--chip)] text-[var(--fg)] transition-all duration-200 hover:-translate-y-0.5 hover:rotate-45 hover:border-[var(--soft)]"
+    >
+      {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+    </button>
+  );
+}
+
+function Nav({
+  route,
+  activeSection,
+  theme,
+  toggleTheme,
+  onOpenPalette,
+}: {
+  route: RoutePath;
+  activeSection: string;
+  theme: ThemeMode;
+  toggleTheme: () => void;
+  onOpenPalette: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    setOpen(false);
+  }, [route]);
+
+  const isItemActive = (item: NavItem) => {
+    if (item.type === "route") return route === item.href;
+    if (route !== "/") return false;
+    return activeSection === item.href.replace("/#", "");
+  };
+
+  return (
+    <nav className="sticky top-0 z-40 border-b border-[var(--line)] bg-[color:rgb(from_var(--bg)_r_g_b_/_0.85)] backdrop-blur-md supports-[backdrop-filter]:bg-[color:rgb(from_var(--bg)_r_g_b_/_0.85)]">
+      <Shell className="flex min-h-16 items-center justify-between gap-6">
+        <button
+          type="button"
+          onClick={() => navigateTo("/")}
+          className="font-serif text-xl tracking-wide text-[var(--fg)]"
+        >
+          {site.name}
+        </button>
+
+        <div className="hidden items-center gap-5 sm:flex">
+          {navItems.map((item) => {
+            const active = isItemActive(item);
+            return (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() =>
+                  item.type === "route" ? navigateTo(item.href) : navigateTo(item.href)
+                }
+                className={cn(
+                  "group relative text-[13px] transition-colors",
+                  active
+                    ? "font-semibold text-[var(--fg)]"
+                    : "text-[var(--muted)] hover:text-[var(--fg)]",
+                )}
+              >
+                {item.label}
+                <span
+                  className={cn(
+                    "absolute inset-x-0 -bottom-1 h-px origin-left bg-[var(--fg)] transition-transform duration-200",
+                    active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100",
+                  )}
+                />
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={onOpenPalette}
+            aria-label="Open command palette"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--chip)] text-[var(--fg)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--soft)]"
           >
-            <p className="text-zinc-400 leading-relaxed mb-4">
-              Software Engineer with hands-on experience through two internships
-              (JIO, CONCERTO). Currently completing a B.E. in EXTC with a minor
-              in DSA at Lokmanya Tilak College of Engineering (2022–2026).
-            </p>
-            <p className="text-zinc-400 leading-relaxed mb-8">
-              Published ML researcher, hackathon team lead, and open source
-              contributor. I build real-world apps using React, Next.js,
-              Node.js, and Python — focused on clean architecture and great UX.
-            </p>
-            <div className="flex gap-8 pt-6 border-t border-white/5">
-              {[
-                { num: "15", label: "GitHub Repos" },
-                { num: "2", label: "Internships" },
-                { num: "1", label: "Published Paper" },
-              ].map((s) => (
-                <div key={s.label}>
-                  <span className="block font-mono text-2xl font-bold text-blue-400">
-                    {s.num}
+            <Search className="h-4 w-4" />
+          </button>
+          <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
+        </div>
+
+        <div className="flex items-center gap-2 sm:hidden">
+          <button
+            type="button"
+            onClick={onOpenPalette}
+            aria-label="Open command palette"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--chip)] text-[var(--fg)]"
+          >
+            <Search className="h-4 w-4" />
+          </button>
+          <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
+          <button
+            type="button"
+            onClick={() => setOpen((current) => !current)}
+            aria-label="Toggle menu"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--chip)] text-[var(--fg)]"
+          >
+            {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          </button>
+        </div>
+      </Shell>
+
+      <AnimatePresence>
+        {open ? (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="overflow-hidden border-t border-[var(--line)] bg-[var(--bg)] bg-stripes sm:hidden"
+          >
+            <Shell className="py-2">
+              {navItems.map((item) => {
+                const active = isItemActive(item);
+                return (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() =>
+                      item.type === "route" ? navigateTo(item.href) : navigateTo(item.href)
+                    }
+                    className="flex w-full items-center justify-between border-b border-dashed border-[var(--line)] py-3 text-left last:border-b-0"
+                  >
+                    <span
+                      className={cn(
+                        "text-sm",
+                        active
+                          ? "font-semibold text-[var(--fg)]"
+                          : "text-[var(--muted)]",
+                      )}
+                    >
+                      {item.label}
+                    </span>
+                    <span
+                      className={cn(
+                        "h-2 w-2 rounded-full",
+                        active ? "bg-[var(--fg)]" : "bg-[var(--soft)]/40",
+                      )}
+                    />
+                  </button>
+                );
+              })}
+            </Shell>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </nav>
+  );
+}
+
+function Hero({ onOpenPalette }: { onOpenPalette: () => void }) {
+  const avatars = ["/profile.jpg", "/profile2.png"];
+  const [avatarIndex, setAvatarIndex] = useState(0);
+  const [headlineIndex, setHeadlineIndex] = useState(0);
+  const [avatarFailed, setAvatarFailed] = useState(false);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setHeadlineIndex((current) => (current + 1) % HEADLINE_TITLES.length);
+    }, 3200);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const rotateAvatar = () => {
+    setAvatarFailed(false);
+    setAvatarIndex((current) => (current + 1) % avatars.length);
+  };
+
+  return (
+    <motion.section {...pageTransition}>
+      <Shell className="py-7 sm:py-9">
+        <div className="relative h-36 overflow-hidden rounded-xl border border-[var(--line)] sm:h-44">
+          <img
+            src="/images/cover.jpg"
+            alt="Editorial portfolio cover"
+            className="h-full w-full object-cover opacity-65 grayscale"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-[rgba(0,0,0,0.35)] to-transparent" />
+          <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,rgba(255,255,255,0.05)_0,rgba(255,255,255,0.05)_1px,transparent_1px,transparent_4px)]" />
+          <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,rgba(0,0,0,0.12)_0,rgba(0,0,0,0.12)_1px,transparent_1px,transparent_28px)]" />
+          <div className="scanline absolute inset-0" />
+        </div>
+
+        <div className="mt-6 flex flex-col items-center gap-5 text-center sm:flex-row sm:items-end sm:justify-between sm:text-left">
+          <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-end">
+            <div className="group relative">
+              <button
+                type="button"
+                onClick={rotateAvatar}
+                className="relative block overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--chip)]"
+              >
+                {avatarFailed ? (
+                  <div className="flex h-20 w-20 items-center justify-center font-serif text-lg text-[var(--fg)]">
+                    SJ
+                  </div>
+                ) : (
+                  <img
+                    src={avatars[avatarIndex]}
+                    alt={site.name}
+                    className="h-20 w-20 object-cover grayscale"
+                    onError={() => setAvatarFailed(true)}
+                  />
+                )}
+                <span className="absolute inset-0 bg-[repeating-linear-gradient(0deg,rgba(255,255,255,0.10)_0,rgba(255,255,255,0.10)_1px,transparent_1px,transparent_4px)] opacity-[0.18] transition-opacity duration-200 group-hover:opacity-[0.30]" />
+              </button>
+              <button
+                type="button"
+                onClick={rotateAvatar}
+                className="absolute right-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--chip)] text-[var(--fg)] opacity-100 transition-all duration-200 sm:opacity-0 sm:group-hover:opacity-100"
+                aria-label="Rotate avatar"
+              >
+                <ChevronDown className="h-3.5 w-3.5 rotate-[-90deg]" />
+              </button>
+            </div>
+
+            <div>
+              <h1 className="glitch-text font-serif text-3xl leading-none tracking-tight sm:text-[38px]">
+                {site.name}
+              </h1>
+              <div className="mt-2 flex min-h-6 items-center justify-center sm:justify-start">
+                <AnimatePresence mode="wait">
+                  <motion.p
+                    key={HEADLINE_TITLES[headlineIndex]}
+                    initial={{ y: 12, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: -12, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: "easeOut" }}
+                    className="font-mono text-[13px] text-[var(--muted)]"
+                  >
+                    {HEADLINE_TITLES[headlineIndex]}
+                  </motion.p>
+                </AnimatePresence>
+              </div>
+              <div className="mt-2 flex items-center justify-center gap-1.5 font-mono text-[11px] text-[var(--soft)] sm:justify-start">
+                <MapPin className="h-3.5 w-3.5" />
+                <span>{site.location}</span>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onOpenPalette}
+            className="inline-flex items-center gap-3 rounded-lg border border-[var(--line)] bg-[var(--chip)] px-3 py-2 font-mono text-[11px] text-[var(--muted)] transition-all duration-200 hover:-translate-y-0.5 hover:text-[var(--fg)]"
+          >
+            <Search className="h-3.5 w-3.5" />
+            <span>Command Palette</span>
+            <span className="rounded border border-[var(--line)] px-1.5 py-0.5">⌘K</span>
+          </button>
+        </div>
+      </Shell>
+    </motion.section>
+  );
+}
+
+function AboutSection() {
+  return (
+    <section id="about">
+      <SectionHeader title="About" />
+      <Shell className="grid gap-6 py-7 sm:grid-cols-[1.25fr_0.9fr] sm:py-8">
+        <div className="space-y-3">
+          {site.about.map((paragraph, index) => (
+            <motion.div
+              key={paragraph}
+              initial={{ opacity: 0, y: 18 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.25 }}
+              transition={{
+                duration: 0.6,
+                ease: [0.22, 1, 0.36, 1],
+                delay: index * 0.1,
+              }}
+              className="flex gap-3 text-[13.5px] leading-relaxed text-[var(--muted)]"
+            >
+              <span className="pt-1 text-[var(--soft)]">•</span>
+              <p>{paragraph}</p>
+            </motion.div>
+          ))}
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 18 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.25 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: 0.3 }}
+          className="rounded-xl border border-[var(--line)] bg-[var(--card)] p-5"
+        >
+          <p className="font-mono text-[11px] font-semibold uppercase tracking-widest text-[var(--soft)]">
+            Developer Snapshot
+          </p>
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {site.tldr.map((item) => (
+              <div key={item} className="flex gap-2 text-[13px] text-[var(--muted)]">
+                <span className="mt-1 h-2 w-2 rounded-full bg-emerald-500" />
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </Shell>
+    </section>
+  );
+}
+
+function ContactSection() {
+  const contactItems = [
+    {
+      label: "GitHub",
+      href: site.socials.github,
+      icon: <Github className="h-4 w-4" />,
+    },
+    {
+      label: "LinkedIn",
+      href: site.socials.linkedin,
+      icon: <ExternalLink className="h-4 w-4" />,
+    },
+    {
+      label: "Twitter",
+      href: site.socials.twitter,
+      icon: <ExternalLink className="h-4 w-4" />,
+    },
+    {
+      label: "Mail",
+      href: site.socials.email,
+      icon: <Mail className="h-4 w-4" />,
+    },
+    {
+      label: "Resume",
+      href: site.socials.resume,
+      icon: <FilePenLine className="h-4 w-4" />,
+    },
+  ];
+
+  return (
+    <section id="contact">
+      <SectionHeader title="Contact" />
+      <Shell className="py-1">
+        <div className="grid grid-cols-2 sm:grid-cols-5">
+          {contactItems.map((item) => {
+            const isMail = item.href.startsWith("mailto:");
+            const isExternal = !item.href.startsWith("/") && !item.href.startsWith("#") && !isMail;
+            return (
+              <a
+                key={item.label}
+                href={item.href}
+                target={isExternal ? "_blank" : undefined}
+                rel={isExternal ? "noreferrer" : undefined}
+                className="group border-b border-r border-[var(--line)] p-4 transition-colors hover:bg-[var(--hover)] sm:min-h-[126px]"
+              >
+                <div className="flex h-full flex-col justify-between gap-8">
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--chip)] text-[var(--fg)]">
+                    {item.icon}
                   </span>
-                  <span className="text-xs text-zinc-500 mt-1 block">
-                    {s.label}
-                  </span>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[13px] text-[var(--fg)]">{item.label}</span>
+                    <ArrowUpRight className="h-4 w-4 text-[var(--soft)] transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                  </div>
+                </div>
+              </a>
+            );
+          })}
+        </div>
+      </Shell>
+    </section>
+  );
+}
+
+function ProjectTabs({
+  active,
+  onChange,
+}: {
+  active: "All" | ProjectCategory;
+  onChange: (value: "All" | ProjectCategory) => void;
+}) {
+  return (
+    <div className="inline-flex flex-wrap rounded-lg border border-[var(--line)] bg-[var(--chip)] p-0.5">
+      {projectTabs.map((tab) => (
+        <button
+          key={tab}
+          type="button"
+          onClick={() => onChange(tab)}
+          className={cn(
+            "rounded-md px-3 py-1.5 text-[12px] transition-colors",
+            active === tab
+              ? "bg-[var(--fg)] font-semibold text-[var(--bg)] shadow-sm"
+              : "text-[var(--muted)] hover:text-[var(--fg)]",
+          )}
+        >
+          {tab}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ProjectCard({ project }: { project: (typeof site.projects)[number] }) {
+  const [open, setOpen] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 12 }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
+      className="group rounded-xl border border-[var(--line)] bg-[var(--card)] p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-[var(--soft)] hover:shadow-md"
+    >
+      <div className="relative h-48 w-full overflow-hidden rounded-lg border border-[var(--line)] bg-gradient-to-br from-[var(--chip)] via-[var(--card)] to-[color:rgb(from_var(--bg)_r_g_b_/_0.4)]">
+        <div className="bg-stripes absolute inset-0 opacity-20" />
+        <AnimatePresence>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0 }}
+            whileHover={{ opacity: 1 }}
+            className="pointer-events-none absolute inset-0"
+          >
+            <span className="absolute left-2.5 top-2.5 h-4 w-4 border-l border-t border-[var(--fg)]" />
+            <span className="absolute right-2.5 top-2.5 h-4 w-4 border-r border-t border-[var(--fg)]" />
+            <span className="absolute bottom-2.5 left-2.5 h-4 w-4 border-b border-l border-[var(--fg)]" />
+            <span className="absolute bottom-2.5 right-2.5 h-4 w-4 border-b border-r border-[var(--fg)]" />
+            <div className="absolute left-3 top-3 flex items-center gap-2 font-mono text-[10px] text-[var(--fg)]">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-rose-500" />
+              <span>REC</span>
+            </div>
+            <div className="absolute right-3 top-3 font-mono text-[10px] text-[var(--fg)]">
+              ISO 400
+            </div>
+          </motion.div>
+        </AnimatePresence>
+
+        <div className="absolute left-4 top-4 flex flex-wrap gap-2">
+          {project.status ? (
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10.5px]",
+                project.status === "Live"
+                  ? "bg-emerald-500/20 text-emerald-300"
+                  : "bg-amber-500/20 text-amber-300",
+              )}
+            >
+              <span
+                className={cn(
+                  "h-2 w-2 rounded-full",
+                  project.status === "Live" ? "animate-pulse bg-emerald-400" : "bg-amber-300",
+                )}
+              />
+              {project.status}
+            </span>
+          ) : null}
+          {project.featured ? (
+            <span className="rounded-full bg-amber-400/10 px-2.5 py-1 font-mono text-[10.5px] text-amber-500">
+              Featured
+            </span>
+          ) : null}
+        </div>
+
+        <div className="absolute -bottom-3 -right-6 h-32 w-56 overflow-hidden rounded-lg border-4 border-[color:rgb(from_var(--bg)_r_g_b_/_0.4)] shadow-xl transition-all duration-300 group-hover:-bottom-1 group-hover:-right-4 sm:h-36 sm:w-64">
+          {failed ? (
+            <div className="flex h-full w-full items-center justify-center bg-[var(--chip)] font-serif text-2xl text-[var(--fg)]">
+              {project.title}
+            </div>
+          ) : (
+            <img
+              src={project.image}
+              alt={`${project.title} screenshot`}
+              className="h-full w-full object-cover"
+              onError={() => setFailed(true)}
+            />
+          )}
+        </div>
+      </div>
+
+      <div className="mt-5 flex items-start justify-between gap-3">
+        <h3 className="text-[16px] font-semibold tracking-wide text-[var(--fg)]">
+          {project.title}
+        </h3>
+        <span className="font-mono text-xs text-[var(--soft)]">{project.year}</span>
+      </div>
+      <p className="mt-2 line-clamp-4 text-[13px] text-[var(--muted)]">{project.blurb}</p>
+
+      {project.story ? (
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => setOpen((current) => !current)}
+            className="inline-flex items-center gap-2 text-[12px] text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
+          >
+            <span>{open ? "Hide engineering details" : "Show engineering details"}</span>
+            {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          </button>
+          <AnimatePresence initial={false}>
+            {open ? (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="overflow-hidden"
+              >
+                <div className="mt-3 border-l-2 border-l-[var(--soft)] bg-[color:rgb(from_var(--chip)_r_g_b_/_0.6)] px-4 py-3 text-[12px] leading-relaxed text-[var(--muted)]">
+                  {project.story.split("\n\n").map((paragraph) => (
+                    <p key={paragraph} className="mb-3 last:mb-0">
+                      {paragraph}
+                    </p>
+                  ))}
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+        </div>
+      ) : null}
+
+      <div className="mt-5 flex flex-wrap gap-2">
+        {project.stack.map((item) => (
+          <span
+            key={item}
+            className="rounded border border-[color:rgb(from_var(--line)_r_g_b_/_0.3)] bg-[var(--chip)] px-2 py-0.5 font-mono text-[10.5px] text-[var(--muted)]"
+          >
+            {item}
+          </span>
+        ))}
+      </div>
+
+      <div className="mt-4 flex items-center gap-3">
+        {project.links.live ? (
+          <a
+            href={project.links.live}
+            target="_blank"
+            rel="noreferrer"
+            className="text-[var(--muted)] transition-all duration-200 hover:-translate-y-0.5 hover:text-[var(--fg)]"
+            aria-label={`${project.title} live`}
+          >
+            <Globe className="h-4 w-4" />
+          </a>
+        ) : null}
+        {project.links.source ? (
+          <a
+            href={project.links.source}
+            target="_blank"
+            rel="noreferrer"
+            className="text-[var(--muted)] transition-all duration-200 hover:-translate-y-0.5 hover:text-[var(--fg)]"
+            aria-label={`${project.title} source`}
+          >
+            <GitHubWordmark />
+          </a>
+        ) : null}
+      </div>
+    </motion.div>
+  );
+}
+
+function ProjectsSection({ routeOnly = false }: { routeOnly?: boolean }) {
+  const [activeTab, setActiveTab] = useState<"All" | ProjectCategory>("All");
+  const [query, setQuery] = useState("");
+
+  const filtered = useMemo(() => {
+    return site.projects.filter((project) => {
+      const matchesCategory =
+        activeTab === "All" ||
+        project.categories.some((category) => category === activeTab);
+      const matchesQuery =
+        !query ||
+        `${project.title} ${project.blurb} ${project.stack.join(" ")}`
+          .toLowerCase()
+          .includes(query.toLowerCase());
+      return matchesCategory && matchesQuery;
+    });
+  }, [activeTab, query]);
+
+  return (
+    <section id="projects">
+      <SectionHeader
+        title="Projects"
+        aside={
+          routeOnly ? null : <ProjectTabs active={activeTab} onChange={setActiveTab} />
+        }
+      />
+      <Shell className="py-7 sm:py-8">
+        {routeOnly ? (
+          <div className="flex flex-col gap-4 border-b border-[var(--line)] pb-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative w-full sm:max-w-md">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--soft)]" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search projects"
+                className="w-full rounded-lg border border-[var(--line)] bg-[var(--chip)] py-2.5 pl-9 pr-9 text-[13px] text-[var(--fg)] outline-none transition-colors placeholder:text-[var(--soft)] focus:border-[var(--soft)]"
+              />
+              {query ? (
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--soft)]"
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
+            </div>
+            <ProjectTabs active={activeTab} onChange={setActiveTab} />
+          </div>
+        ) : null}
+
+        <motion.div layout className={cn("mt-5 grid gap-4 sm:grid-cols-2", routeOnly ? "" : "")}>
+          <AnimatePresence mode="popLayout">
+            {filtered.map((project) => (
+              <ProjectCard key={project.title} project={project} />
+            ))}
+          </AnimatePresence>
+        </motion.div>
+      </Shell>
+    </section>
+  );
+}
+
+function ExperienceSection() {
+  const metrics = [
+    { value: "5+", label: "Projects" },
+    { value: "100%", label: "TypeScript" },
+    { value: "10+", label: "APIs" },
+    { value: "500+", label: "Commits" },
+  ];
+
+  return (
+    <section id="experience">
+      <SectionHeader title="Experience" />
+      <Shell className="py-2">
+        {site.experience.map((job) => (
+          <div key={`${job.company}-${job.period}`} className="border-t border-[var(--line)] py-5 first:border-t-0">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h3 className="text-[16px] font-semibold tracking-wide text-[var(--fg)]">
+                  {job.role} ·{" "}
+                  {job.url ? (
+                    <a
+                      href={job.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 hover:text-[var(--muted)]"
+                    >
+                      {job.company}
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  ) : (
+                    job.company
+                  )}
+                </h3>
+                <p className="mt-2 text-[13.5px] text-[var(--muted)]">{job.blurb}</p>
+              </div>
+              <span className="font-mono text-[11px] text-[var(--soft)]">{job.period}</span>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 divide-x divide-[var(--line)] overflow-hidden rounded-lg border border-[var(--line)] bg-[color:rgb(from_var(--chip)_r_g_b_/_0.6)] sm:grid-cols-4">
+              {metrics.map((metric) => (
+                <div key={metric.label} className="px-4 py-3">
+                  <div className="text-[15px] font-bold text-[var(--fg)]">{metric.value}</div>
+                  <div className="font-mono text-[9px] uppercase tracking-widest text-[var(--soft)]">
+                    {metric.label}
+                  </div>
                 </div>
               ))}
             </div>
           </div>
-
-          {/* Skills */}
-          <div className="flex flex-col gap-5">
-            {skillCategories.map(([label, tags], i) => (
-              <div
-                key={label}
-                className={`transition-all duration-700 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
-                style={{ transitionDelay: `${(i + 2) * 80}ms` }}
-              >
-                <h4 className="font-mono text-xs text-blue-400 uppercase tracking-widest mb-2">
-                  {label}
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  {(tags as string[]).map((t) => (
-                    <span
-                      key={t}
-                      className="font-mono text-xs text-zinc-300 bg-zinc-900 border border-white/5 px-2.5 py-1 rounded hover:border-blue-400/40 hover:text-blue-300 transition-colors"
-                    >
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+        ))}
+      </Shell>
     </section>
   );
 }
 
-// ── Project Card ──────────────────────────────────────────────────────────────
-function ProjectCard({ p, index }: { p: (typeof PROJECTS)[0]; index: number }) {
-  const { ref, visible } = useReveal();
+function TechStackSection() {
+  const [activeTab, setActiveTab] = useState<TechCategory>("All");
+
+  const filteredSkills = useMemo(
+    () =>
+      activeTab === "All"
+        ? site.skills
+        : site.skills.filter((skill) => skill.category === activeTab),
+    [activeTab],
+  );
+
   return (
-    <div
-      ref={ref}
-      className={`group relative bg-zinc-900 border border-white/5 rounded-xl p-6 flex flex-col hover:border-blue-400/20 hover:-translate-y-1 hover:shadow-2xl hover:shadow-black/40 transition-all duration-300 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
-      style={{ transitionDelay: `${index * 70}ms` }}
-    >
-      <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-blue-400/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-      <div className="flex justify-between items-start mb-4">
-        <a
-          href={p.github}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-zinc-600 hover:text-blue-400 transition-colors ml-auto"
-          aria-label={`${p.name} on GitHub`}
-        >
-          <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12Z" />
-          </svg>
-        </a>
-      </div>
-      <h3 className="font-semibold text-white mb-2">{p.name}</h3>
-      <p className="text-sm text-zinc-400 leading-relaxed flex-1">
-        {p.description}
-      </p>
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        {p.live ? (
-          <a
-            href={p.live}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-400/10 px-3 py-1.5 text-sm font-medium text-blue-300 transition hover:border-blue-400/60 hover:bg-blue-400/20"
-          >
-            <span>Live Preview</span>
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              className="h-4 w-4"
+    <section id="skills">
+      <SectionHeader
+        title="Tech Stack"
+        aside={
+          <span className="font-mono text-[10px] uppercase tracking-widest text-[var(--soft)]">
+            ( select tab to filter )
+          </span>
+        }
+      />
+      <Shell className="py-7 sm:py-8">
+        <div className="flex flex-wrap gap-2">
+          {techTabs.map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-[12px] transition-all duration-200",
+                activeTab === tab
+                  ? "border-[var(--fg)] bg-[var(--fg)] text-[var(--bg)]"
+                  : "border-[var(--line)] bg-[var(--chip)] text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--fg)]",
+              )}
             >
-              <path
-                d="M7 17L17 7"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path d="M8 7h8v8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </a>
-        ) : null}
-      </div>
-      <div className="flex flex-wrap gap-1.5 mt-4">
-        {p.tags.map((t) => (
-          <span
-            key={t}
-            className="font-mono text-xs text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded"
+              {techTabIcons[tab]}
+              <span>{tab}</span>
+            </button>
+          ))}
+        </div>
+
+        <motion.div layout className="mt-5 flex flex-wrap gap-2.5">
+          <AnimatePresence mode="popLayout">
+            {filteredSkills.map((skill) => (
+              <motion.span
+                key={skill.name}
+                layout
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                className="group inline-flex items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--card)] px-3 py-1.5 font-mono text-[12px] text-[var(--muted)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--fg)] hover:bg-[var(--fg)] hover:text-[var(--bg)]"
+              >
+                <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-current text-[9px] transition-all group-hover:brightness-110">
+                  {skill.name.slice(0, 1)}
+                </span>
+                {skill.name}
+              </motion.span>
+            ))}
+          </AnimatePresence>
+        </motion.div>
+      </Shell>
+    </section>
+  );
+}
+
+function WritingSection() {
+  return (
+    <section id="writing">
+      <SectionHeader
+        title="Writing"
+        aside={
+          <a
+            href={site.socials.medium}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 font-mono text-[11px] text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
           >
-            {t}
-          </span>
+            <span>Medium</span>
+            <span>medium.com</span>
+            <ArrowUpRight className="h-3.5 w-3.5" />
+          </a>
+        }
+      />
+      <Shell className="divide-y divide-[var(--line)]">
+        {site.writing.map((post) => (
+          <a
+            key={post.title}
+            href={post.url}
+            target="_blank"
+            rel="noreferrer"
+            className="flex flex-col gap-3 px-0 py-5 transition-colors hover:bg-[var(--hover)] sm:flex-row sm:items-start sm:gap-5"
+          >
+            <div className="w-20 shrink-0 font-mono text-[11px] text-[var(--soft)]">
+              {new Date(post.date).toLocaleDateString("en-US", {
+                month: "short",
+                day: "2-digit",
+                year: "numeric",
+              })}
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="font-serif text-[18px] text-[var(--fg)] transition-colors hover:text-[var(--muted)]">
+                {post.title}
+              </h3>
+              <p className="mt-1 line-clamp-2 text-[13px] text-[var(--muted)]">
+                {post.summary}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 text-[12px] text-[var(--muted)]">
+              <span>{post.readingTime ?? "Read"}</span>
+              <ArrowUpRight className="h-4 w-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+            </div>
+          </a>
         ))}
-      </div>
-    </div>
-  );
-}
-
-// ── Projects Section ──────────────────────────────────────────────────────────
-function ProjectsSection() {
-  return (
-    <section id="projects" className="py-28 px-6 bg-zinc-950/50">
-      <div className="max-w-5xl mx-auto">
-        <SectionHeader tag="02. Projects" title="Things I've built" />
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {PROJECTS.map((p, i) => (
-            <ProjectCard key={p.name} p={p} index={i} />
-          ))}
-        </div>
-      </div>
+      </Shell>
     </section>
   );
 }
 
-// ── Experience Item ───────────────────────────────────────────────────────────
-function ExperienceItem({
-  exp,
-  index,
-}: {
-  exp: (typeof EXPERIENCES)[0];
-  index: number;
-}) {
-  const { ref, visible } = useReveal();
-  return (
-    <div
-      ref={ref}
-      className={`relative pb-12 last:pb-0 transition-all duration-700 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
-      style={{ transitionDelay: `${index * 100}ms` }}
-    >
-      <div className="absolute -left-[29px] top-1.5 w-3 h-3 rounded-full bg-blue-400 ring-4 ring-blue-400/20 ring-offset-1 ring-offset-black" />
-      <span className="font-mono text-xs text-blue-400 tracking-widest uppercase">
-        {exp.date}
-      </span>
-      <h3 className="text-lg font-semibold mt-1">{exp.role}</h3>
-      <p className="text-sm text-zinc-400 mb-3">
-        {exp.company} · {exp.location}
-      </p>
-      <ul className="space-y-1.5">
-        {exp.bullets.map((b) => (
-          <li key={b} className="text-sm text-zinc-400 flex gap-2">
-            <span className="text-blue-400 mt-0.5 shrink-0">▸</span>
-            {b}
-          </li>
-        ))}
-      </ul>
-    </div>
+function GitHubActivitySection() {
+  const { weeks, monthLabels, opacitySteps } = useGithubHeatmap(
+    site.github.username,
+    site.github.contributionsLastYear,
   );
-}
 
-// ── Experience Section ────────────────────────────────────────────────────────
-function ExperienceSection() {
   return (
-    <section id="experience" className="py-28 px-6">
-      <div className="max-w-5xl mx-auto">
-        <SectionHeader tag="03. Experience" title="Where I've worked" />
-        <div className="relative pl-6 border-l border-white/10">
-          {EXPERIENCES.map((exp, i) => (
-            <ExperienceItem key={exp.company} exp={exp} index={i} />
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
+    <section id="github">
+      <SectionHeader
+        title="GitHub Activity"
+        aside={
+          <a
+            href={`https://github.com/${site.github.username}`}
+            target="_blank"
+            rel="noreferrer"
+            className="font-mono text-[11px] text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
+          >
+            @{site.github.username}
+          </a>
+        }
+      />
+      <Shell className="py-7 sm:py-8">
+        <div className="overflow-x-auto">
+          <div className="min-w-[640px]">
+            <div className="mb-2 grid grid-cols-[repeat(53,minmax(0,1fr))] gap-[3px] pl-10">
+              {Array.from({ length: 53 }, (_, index) => {
+                const label = monthLabels.find((item) => item.index === index)?.label;
+                return (
+                  <span
+                    key={`month-${index}`}
+                    className="font-mono text-[10px] text-[var(--soft)]"
+                  >
+                    {label ?? ""}
+                  </span>
+                );
+              })}
+            </div>
 
-// ── Extras Section ────────────────────────────────────────────────────────────
-function ExtrasSection() {
-  const { ref, visible } = useReveal();
-  return (
-    <section className="py-20 px-6 bg-zinc-950/50">
-      <div className="max-w-5xl mx-auto">
-        <SectionHeader tag="04. Extra" title="Beyond the code" />
-        <div
-          ref={ref}
-          className={`space-y-4 transition-all duration-700 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
-        >
-          <ul className="space-y-4">
-            {EXTRAS.map((e) => (
-              <li
-                key={e}
-                className="flex gap-3 text-sm text-zinc-400 leading-relaxed"
-              >
-                <span className="text-blue-400 mt-0.5 shrink-0">▸</span>
-                {e}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </section>
-  );
-}
+            <div className="flex gap-3">
+              <div className="grid grid-rows-7 gap-[3px] pt-[2px] font-mono text-[10px] text-[var(--soft)]">
+                {["S", "M", "T", "W", "T", "F", "S"].map((day) => (
+                  <span key={day} className="h-[10px]">
+                    {day}
+                  </span>
+                ))}
+              </div>
+              <div className="grid grid-flow-col grid-rows-7 gap-[3px]">
+                {weeks.map((week) => (
+                  <Fragment key={week.weekIndex}>
+                    {week.days.map((cell) => (
+                      <div
+                        key={cell.date}
+                        title={`${cell.date}: ${cell.count} contributions`}
+                        className="size-[10px] rounded-[2px] bg-[var(--fg)] transition-transform duration-200 hover:scale-125"
+                        style={{ opacity: opacitySteps[cell.level] }}
+                      />
+                    ))}
+                  </Fragment>
+                ))}
+              </div>
+            </div>
 
-// ── Contact Section ───────────────────────────────────────────────────────────
-function ContactSection() {
-  const { ref, visible } = useReveal();
-  const socials = [
-    {
-      label: "GitHub",
-      href: "https://github.com/sahiljadhav7",
-      icon: (
-        <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-          <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12Z" />
-        </svg>
-      ),
-    },
-    {
-      label: "LinkedIn",
-      href: "https://www.linkedin.com/in/sahil-jadhav1/",
-      icon: (
-        <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-          <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-        </svg>
-      ),
-    },
-  ];
-  return (
-    <section id="contact" className="py-28 px-6">
-      <div className="max-w-lg mx-auto text-center">
-        <div
-          ref={ref}
-          className={`transition-all duration-700 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
-        >
-          <span className="font-mono text-xs text-blue-400 tracking-widest uppercase">
-            05. Contact
-          </span>
-          <h2 className="text-3xl md:text-4xl font-bold mt-3 mb-4 tracking-tight">
-            Let's build something together
-          </h2>
-          <p>jadhavsahilcodes@gmail(dot)com</p>
-          <div className="flex justify-center gap-6 mt-12">
-            {socials.map((s) => (
-              <a
-                key={s.label}
-                href={s.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={s.label}
-                className="text-zinc-500 hover:text-blue-400 hover:-translate-y-0.5 transition-all"
-              >
-                {s.icon}
-              </a>
-            ))}
+            <div className="mt-4 flex items-center justify-end gap-2 font-mono text-[10px] text-[var(--soft)]">
+              <span>Less</span>
+              {opacitySteps.map((opacity) => (
+                <span
+                  key={opacity}
+                  className="size-[10px] rounded-[2px] bg-[var(--fg)]"
+                  style={{ opacity }}
+                />
+              ))}
+              <span>More</span>
+            </div>
           </div>
         </div>
-      </div>
+      </Shell>
     </section>
   );
 }
 
-// ── Footer ────────────────────────────────────────────────────────────────────
-function Footer() {
+function FooterSection() {
+  const [quoteIndex, setQuoteIndex] = useState(0);
+  const time = useClock();
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setQuoteIndex((current) => (current + 1) % QUOTES.length);
+    }, 6000);
+    return () => window.clearInterval(id);
+  }, []);
+
   return (
-    <footer className="border-t border-white/5 py-6 text-center font-mono text-xs text-zinc-600">
-      Designed & Built by <span className="text-blue-400">Sahil Jadhav</span> ·
-      2025
+    <footer>
+      <SectionHeader title="Scrolled Too Far" />
+      <Shell className="flex flex-col items-start justify-between gap-4 py-7 sm:flex-row sm:items-center">
+        <p className="max-w-[480px] text-[13.5px] text-[var(--muted)]">
+          Still here? That usually means we should talk about the product, the role,
+          or the next thing worth building.
+        </p>
+        <a
+          href="/#contact"
+          className="inline-flex items-center gap-2 rounded-lg bg-[var(--fg)] px-4 py-2 text-[13px] text-[var(--bg)] transition-all duration-200 hover:-translate-y-0.5"
+        >
+          Let&apos;s Talk
+          <ArrowUpRight className="h-4 w-4" />
+        </a>
+      </Shell>
+
+      <GapBand />
+
+      <div className="border-y border-[var(--line)]">
+        <Shell className="flex min-h-[160px] items-center justify-center py-8 text-center">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={quoteIndex}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="max-w-[560px]"
+            >
+              <p className="font-serif text-3xl text-[var(--soft)]">&quot;</p>
+              <p className="font-serif text-[20px] italic text-[var(--fg)] sm:text-[22px]">
+                {QUOTES[quoteIndex]?.text}
+              </p>
+              <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.3em] text-[var(--soft)]">
+                {QUOTES[quoteIndex]?.author}
+              </p>
+            </motion.div>
+          </AnimatePresence>
+        </Shell>
+      </div>
+
+      <GapBand h="h-5" />
+
+      <div className="border-t border-[var(--line)]">
+        <Shell className="flex flex-col gap-2 py-4 text-[12px] text-[var(--muted)] sm:flex-row sm:items-center sm:justify-between">
+          <p>Designed &amp; Developed by {site.name}</p>
+          <p>© 2026 {site.name}</p>
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+            <span>{site.location}</span>
+            <span>{time}</span>
+          </div>
+        </Shell>
+      </div>
     </footer>
   );
 }
 
-// ── App ───────────────────────────────────────────────────────────────────────
-export default function App() {
+function SideIndex({ activeId }: { activeId: string }) {
   return (
-    <div className="min-h-screen text-white">
-      <ShaderAnimation />
-      <Navbar1 />
-      <div id="hero" className="pt-16">
-        <ResumePage />
+    <div className="fixed left-[calc(50%+410px)] top-[26vh] hidden xl:block">
+      <div className="space-y-3">
+        {sideIndexItems.map((item) => {
+          const active = activeId === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => navigateTo(`/#${item.id}`)}
+              className="group flex items-center gap-2"
+            >
+              <span
+                className={cn(
+                  "h-px bg-[var(--fg)] transition-all duration-200",
+                  active ? "w-4" : "w-0 group-hover:w-2",
+                )}
+              />
+              <span
+                className={cn(
+                  "text-[12px] transition-colors",
+                  active
+                    ? "font-semibold text-[var(--fg)]"
+                    : "text-[var(--soft)] group-hover:text-[var(--fg)]",
+                )}
+              >
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
       </div>
+    </div>
+  );
+}
+
+function CommandPalette({
+  open,
+  onClose,
+  onToggleTheme,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onToggleTheme: () => void;
+}) {
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  const commands = useMemo<Command[]>(
+    () => [
+      { id: "about", label: "Go to About", hint: "/", action: () => navigateTo("/#about") },
+      {
+        id: "projects",
+        label: "Go to Projects",
+        hint: "/projects",
+        action: () => navigateTo("/projects"),
+      },
+      {
+        id: "experience",
+        label: "Go to Experience",
+        hint: "/experience",
+        action: () => navigateTo("/experience"),
+      },
+      {
+        id: "contact",
+        label: "Go to Contact",
+        hint: "/contact",
+        action: () => navigateTo("/contact"),
+      },
+      {
+        id: "writing",
+        label: "Go to Writing",
+        hint: "/writing",
+        action: () => navigateTo("/writing"),
+      },
+      {
+        id: "github",
+        label: "Open GitHub",
+        hint: "external",
+        action: () => window.open(site.socials.github, "_blank", "noreferrer"),
+      },
+      {
+        id: "linkedin",
+        label: "Open LinkedIn",
+        hint: "external",
+        action: () => window.open(site.socials.linkedin, "_blank", "noreferrer"),
+      },
+      {
+        id: "theme",
+        label: "Toggle Theme",
+        hint: "light/dark",
+        action: () => onToggleTheme(),
+      },
+    ],
+    [onToggleTheme],
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    setSelectedIndex(0);
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setSelectedIndex((current) => (current + 1) % commands.length);
+      }
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setSelectedIndex((current) => (current - 1 + commands.length) % commands.length);
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        commands[selectedIndex]?.action();
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [commands, onClose, open, selectedIndex]);
+
+  return (
+    <AnimatePresence>
+      {open ? (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 px-4 pt-[14vh]"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 14 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            onClick={(event) => event.stopPropagation()}
+            className="w-full max-w-xl overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--card)] shadow-2xl"
+          >
+            <div className="border-b border-[var(--line)] px-4 py-3 font-mono text-[11px] text-[var(--soft)]">
+              Command Palette
+            </div>
+            <div className="p-2">
+              {commands.map((command, index) => (
+                <button
+                  key={command.id}
+                  type="button"
+                  onClick={() => {
+                    command.action();
+                    onClose();
+                  }}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-lg px-3 py-3 text-left font-mono text-[12px] transition-colors",
+                    selectedIndex === index
+                      ? "bg-[var(--hover)] text-[var(--fg)]"
+                      : "text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--fg)]",
+                  )}
+                >
+                  <span>{command.label}</span>
+                  <span className="text-[var(--soft)]">{command.hint}</span>
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
+function ConfettiOverlay({ burst }: { burst: number }) {
+  if (!burst) return null;
+
+  return (
+    <div className="pointer-events-none fixed inset-0 z-[60] overflow-hidden">
+      {Array.from({ length: 28 }, (_, index) => (
+        <span
+          key={`${burst}-${index}`}
+          className="confetti-piece"
+          style={
+            {
+              left: `${(index * 13) % 100}%`,
+              animationDelay: `${(index % 8) * 0.06}s`,
+              ["--drift" as string]: `${(index % 5) - 2}vw`,
+              ["--spin" as string]: `${(index % 2 === 0 ? 1 : -1) * 360}deg`,
+            } as CSSProperties
+          }
+        />
+      ))}
+    </div>
+  );
+}
+
+function HomePage({ onOpenPalette }: { onOpenPalette: () => void }) {
+  return (
+    <motion.main {...pageTransition}>
+      <Hero onOpenPalette={onOpenPalette} />
+      <GapBand />
       <AboutSection />
-      <ProjectsSection />
-      <ExperienceSection />
-      <ExtrasSection />
+      <GapBand />
       <ContactSection />
-      <Footer />
+      <GapBand />
+      <ProjectsSection />
+      <GapBand />
+      <ExperienceSection />
+      <GapBand />
+      <TechStackSection />
+      <GapBand />
+      <WritingSection />
+      <GapBand />
+      <GitHubActivitySection />
+      <GapBand />
+      <FooterSection />
+    </motion.main>
+  );
+}
+
+function RoutePage({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <motion.main {...pageTransition}>
+      <Shell className="py-8">
+        <p className="font-mono text-[10px] uppercase tracking-widest text-[var(--soft)]">
+          {title}
+        </p>
+      </Shell>
+      {children}
+      <GapBand />
+      <FooterSection />
+    </motion.main>
+  );
+}
+
+export default function App() {
+  const route = useRoute();
+  const { theme, toggleTheme } = useThemeMode();
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const activeSection = useActiveSection(route === "/");
+  const burst = useKonamiAchievement();
+  useOneko();
+  useCommandPaletteShortcuts(
+    () => setPaletteOpen(true),
+    () => setPaletteOpen(false),
+  );
+
+  return (
+    <div className="min-h-screen bg-[var(--bg)] text-[var(--fg)]">
+      <Nav
+        route={route}
+        activeSection={activeSection}
+        theme={theme}
+        toggleTheme={toggleTheme}
+        onOpenPalette={() => setPaletteOpen(true)}
+      />
+      {route === "/" ? <SideIndex activeId={activeSection} /> : null}
+
+      <AnimatePresence mode="wait">
+        <motion.div key={route}>
+          {route === "/" ? <HomePage onOpenPalette={() => setPaletteOpen(true)} /> : null}
+          {route === "/projects" ? (
+            <RoutePage title="Projects">
+              <ProjectsSection routeOnly />
+            </RoutePage>
+          ) : null}
+          {route === "/experience" ? (
+            <RoutePage title="Experience">
+              <ExperienceSection />
+            </RoutePage>
+          ) : null}
+          {route === "/contact" ? (
+            <RoutePage title="Contact">
+              <ContactSection />
+            </RoutePage>
+          ) : null}
+          {route === "/writing" ? (
+            <RoutePage title="Writing">
+              <WritingSection />
+            </RoutePage>
+          ) : null}
+        </motion.div>
+      </AnimatePresence>
+
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        onToggleTheme={toggleTheme}
+      />
+      <ConfettiOverlay burst={burst} />
     </div>
   );
 }
