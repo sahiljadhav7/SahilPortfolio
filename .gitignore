@@ -1,2 +1,9 @@
 node_modules
+dist
+.vite
+*.tsbuildinfo
+coverage
+.env
+.env.*
+!.env.example
 design.md
