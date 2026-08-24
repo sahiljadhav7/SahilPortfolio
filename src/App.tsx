@@ -29,7 +29,12 @@ import {
   useState,
 } from "react";
 import { cn } from "@/lib/utils";
-import { HEADLINE_TITLES, QUOTES, site, type ProjectCategory } from "@/config/site";
+import {
+  HEADLINE_TITLES,
+  QUOTES,
+  site,
+  type ProjectCategory,
+} from "@/config/site";
 import { useGithubHeatmap } from "@/hooks/useGithubHeatmap";
 
 type RoutePath = "/" | "/projects" | "/experience" | "/contact" | "/writing";
@@ -60,7 +65,7 @@ const navItems: NavItem[] = [
   { label: "Projects", href: "/#projects", type: "section" },
   { label: "Experience", href: "/#experience", type: "section" },
   { label: "Contact", href: "/#contact", type: "section" },
-  { label: "Writing", href: "/writing", type: "route" },
+  { label: "Reading", href: "/writing", type: "route" },
 ];
 
 const sideIndexItems = [
@@ -69,7 +74,7 @@ const sideIndexItems = [
   { id: "projects", label: "Projects" },
   { id: "experience", label: "Experience" },
   { id: "skills", label: "Skills" },
-  { id: "writing", label: "Writing" },
+  { id: "writing", label: "Reading" },
   { id: "github", label: "GitHub" },
 ] as const;
 
@@ -160,8 +165,9 @@ function useThemeMode() {
 
   useEffect(() => {
     const saved = window.localStorage.getItem("theme") as ThemeMode | null;
-    const preferred =
-      window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    const preferred = window.matchMedia("(prefers-color-scheme: light)").matches
+      ? "light"
+      : "dark";
     const nextTheme = saved ?? preferred;
     document.documentElement.classList.toggle("light", nextTheme === "light");
     setTheme(nextTheme);
@@ -307,7 +313,13 @@ function useCommandPaletteShortcuts(open: () => void, close: () => void) {
   }, [close, open]);
 }
 
-function Shell({ children, className }: { children?: ReactNode; className?: string }) {
+function Shell({
+  children,
+  className,
+}: {
+  children?: ReactNode;
+  className?: string;
+}) {
   return (
     <div
       className={cn(
@@ -328,13 +340,7 @@ function GapBand({ h = "h-7" }: { h?: string }) {
   );
 }
 
-function SectionHeader({
-  title,
-  aside,
-}: {
-  title: string;
-  aside?: ReactNode;
-}) {
+function SectionHeader({ title, aside }: { title: string; aside?: ReactNode }) {
   return (
     <div className="relative border-y border-[var(--line)] bg-stripes">
       <span className="absolute left-2 top-2 h-[3px] w-[3px] rounded-full bg-[var(--fg)] opacity-40" />
@@ -369,7 +375,11 @@ function ThemeToggle({
       aria-label="Toggle theme"
       className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--chip)] text-[var(--fg)] transition-all duration-200 hover:-translate-y-0.5 hover:rotate-45 hover:border-[var(--soft)]"
     >
-      {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+      {theme === "dark" ? (
+        <Sun className="h-4 w-4" />
+      ) : (
+        <Moon className="h-4 w-4" />
+      )}
     </button>
   );
 }
@@ -418,7 +428,9 @@ function Nav({
                 key={item.label}
                 type="button"
                 onClick={() =>
-                  item.type === "route" ? navigateTo(item.href) : navigateTo(item.href)
+                  item.type === "route"
+                    ? navigateTo(item.href)
+                    : navigateTo(item.href)
                 }
                 className={cn(
                   "group relative text-[13px] transition-colors",
@@ -431,7 +443,9 @@ function Nav({
                 <span
                   className={cn(
                     "absolute inset-x-0 -bottom-1 h-px origin-left bg-[var(--fg)] transition-transform duration-200",
-                    active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100",
+                    active
+                      ? "scale-x-100"
+                      : "scale-x-0 group-hover:scale-x-100",
                   )}
                 />
               </button>
@@ -486,7 +500,9 @@ function Nav({
                     key={item.label}
                     type="button"
                     onClick={() =>
-                      item.type === "route" ? navigateTo(item.href) : navigateTo(item.href)
+                      item.type === "route"
+                        ? navigateTo(item.href)
+                        : navigateTo(item.href)
                     }
                     className="flex w-full items-center justify-between border-b border-dashed border-[var(--line)] py-3 text-left last:border-b-0"
                   >
@@ -614,7 +630,9 @@ function Hero({ onOpenPalette }: { onOpenPalette: () => void }) {
           >
             <Search className="h-3.5 w-3.5" />
             <span>Command Palette</span>
-            <span className="rounded border border-[var(--line)] px-1.5 py-0.5">⌘K</span>
+            <span className="rounded border border-[var(--line)] px-1.5 py-0.5">
+              ⌘K
+            </span>
           </button>
         </div>
       </Shell>
@@ -659,7 +677,10 @@ function AboutSection() {
           </p>
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {site.tldr.map((item) => (
-              <div key={item} className="flex gap-2 text-[13px] text-[var(--muted)]">
+              <div
+                key={item}
+                className="flex gap-2 text-[13px] text-[var(--muted)]"
+              >
                 <span className="mt-1 h-2 w-2 rounded-full bg-emerald-500" />
                 <span>{item}</span>
               </div>
@@ -707,7 +728,10 @@ function ContactSection() {
         <div className="grid grid-cols-2 sm:grid-cols-5">
           {contactItems.map((item) => {
             const isMail = item.href.startsWith("mailto:");
-            const isExternal = !item.href.startsWith("/") && !item.href.startsWith("#") && !isMail;
+            const isExternal =
+              !item.href.startsWith("/") &&
+              !item.href.startsWith("#") &&
+              !isMail;
             return (
               <a
                 key={item.label}
@@ -721,7 +745,9 @@ function ContactSection() {
                     {item.icon}
                   </span>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-[13px] text-[var(--fg)]">{item.label}</span>
+                    <span className="text-[13px] text-[var(--fg)]">
+                      {item.label}
+                    </span>
                     <ArrowUpRight className="h-4 w-4 text-[var(--soft)] transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
                   </div>
                 </div>
@@ -811,7 +837,9 @@ function ProjectCard({ project }: { project: (typeof site.projects)[number] }) {
               <span
                 className={cn(
                   "h-2 w-2 rounded-full",
-                  project.status === "Live" ? "animate-pulse bg-emerald-400" : "bg-amber-300",
+                  project.status === "Live"
+                    ? "animate-pulse bg-emerald-400"
+                    : "bg-amber-300",
                 )}
               />
               {project.status}
@@ -844,9 +872,13 @@ function ProjectCard({ project }: { project: (typeof site.projects)[number] }) {
         <h3 className="text-[16px] font-semibold tracking-wide text-[var(--fg)]">
           {project.title}
         </h3>
-        <span className="font-mono text-xs text-[var(--soft)]">{project.year}</span>
+        <span className="font-mono text-xs text-[var(--soft)]">
+          {project.year}
+        </span>
       </div>
-      <p className="mt-2 line-clamp-4 text-[13px] text-[var(--muted)]">{project.blurb}</p>
+      <p className="mt-2 line-clamp-4 text-[13px] text-[var(--muted)]">
+        {project.blurb}
+      </p>
 
       {project.story ? (
         <div className="mt-4">
@@ -855,8 +887,14 @@ function ProjectCard({ project }: { project: (typeof site.projects)[number] }) {
             onClick={() => setOpen((current) => !current)}
             className="inline-flex items-center gap-2 text-[12px] text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
           >
-            <span>{open ? "Hide engineering details" : "Show engineering details"}</span>
-            {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            <span>
+              {open ? "Hide engineering details" : "Show engineering details"}
+            </span>
+            {open ? (
+              <ChevronUp className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5" />
+            )}
           </button>
           <AnimatePresence initial={false}>
             {open ? (
@@ -942,7 +980,9 @@ function ProjectsSection({ routeOnly = false }: { routeOnly?: boolean }) {
       <SectionHeader
         title="Projects"
         aside={
-          routeOnly ? null : <ProjectTabs active={activeTab} onChange={setActiveTab} />
+          routeOnly ? null : (
+            <ProjectTabs active={activeTab} onChange={setActiveTab} />
+          )
         }
       />
       <Shell className="py-7 sm:py-8">
@@ -971,7 +1011,10 @@ function ProjectsSection({ routeOnly = false }: { routeOnly?: boolean }) {
           </div>
         ) : null}
 
-        <motion.div layout className={cn("mt-5 grid gap-4 sm:grid-cols-2", routeOnly ? "" : "")}>
+        <motion.div
+          layout
+          className={cn("mt-5 grid gap-4 sm:grid-cols-2", routeOnly ? "" : "")}
+        >
           <AnimatePresence mode="popLayout">
             {filtered.map((project) => (
               <ProjectCard key={project.title} project={project} />
@@ -996,7 +1039,10 @@ function ExperienceSection() {
       <SectionHeader title="Experience" />
       <Shell className="py-2">
         {site.experience.map((job) => (
-          <div key={`${job.company}-${job.period}`} className="border-t border-[var(--line)] py-5 first:border-t-0">
+          <div
+            key={`${job.company}-${job.period}`}
+            className="border-t border-[var(--line)] py-5 first:border-t-0"
+          >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h3 className="text-[16px] font-semibold tracking-wide text-[var(--fg)]">
@@ -1015,15 +1061,21 @@ function ExperienceSection() {
                     job.company
                   )}
                 </h3>
-                <p className="mt-2 text-[13.5px] text-[var(--muted)]">{job.blurb}</p>
+                <p className="mt-2 text-[13.5px] text-[var(--muted)]">
+                  {job.blurb}
+                </p>
               </div>
-              <span className="font-mono text-[11px] text-[var(--soft)]">{job.period}</span>
+              <span className="font-mono text-[11px] text-[var(--soft)]">
+                {job.period}
+              </span>
             </div>
 
             <div className="mt-4 grid grid-cols-2 divide-x divide-[var(--line)] overflow-hidden rounded-lg border border-[var(--line)] bg-[color:rgb(from_var(--chip)_r_g_b_/_0.6)] sm:grid-cols-4">
               {metrics.map((metric) => (
                 <div key={metric.label} className="px-4 py-3">
-                  <div className="text-[15px] font-bold text-[var(--fg)]">{metric.value}</div>
+                  <div className="text-[15px] font-bold text-[var(--fg)]">
+                    {metric.value}
+                  </div>
                   <div className="font-mono text-[9px] uppercase tracking-widest text-[var(--soft)]">
                     {metric.label}
                   </div>
@@ -1182,7 +1234,9 @@ function GitHubActivitySection() {
           <div className="min-w-[640px]">
             <div className="mb-2 grid grid-cols-[repeat(53,minmax(0,1fr))] gap-[3px] pl-10">
               {Array.from({ length: 53 }, (_, index) => {
-                const label = monthLabels.find((item) => item.index === index)?.label;
+                const label = monthLabels.find(
+                  (item) => item.index === index,
+                )?.label;
                 return (
                   <span
                     key={`month-${index}`}
@@ -1252,8 +1306,8 @@ function FooterSection() {
       <SectionHeader title="Scrolled Too Far" />
       <Shell className="flex flex-col items-start justify-between gap-4 py-7 sm:flex-row sm:items-center">
         <p className="max-w-[480px] text-[13.5px] text-[var(--muted)]">
-          Still here? That usually means we should talk about the product, the role,
-          or the next thing worth building.
+          Still here? That usually means we should talk about the product, the
+          role, or the next thing worth building.
         </p>
         <a
           href="/#contact"
@@ -1356,7 +1410,12 @@ function CommandPalette({
 
   const commands = useMemo<Command[]>(
     () => [
-      { id: "about", label: "Go to About", hint: "/", action: () => navigateTo("/#about") },
+      {
+        id: "about",
+        label: "Go to About",
+        hint: "/",
+        action: () => navigateTo("/#about"),
+      },
       {
         id: "projects",
         label: "Go to Projects",
@@ -1391,7 +1450,8 @@ function CommandPalette({
         id: "linkedin",
         label: "Open LinkedIn",
         hint: "external",
-        action: () => window.open(site.socials.linkedin, "_blank", "noreferrer"),
+        action: () =>
+          window.open(site.socials.linkedin, "_blank", "noreferrer"),
       },
       {
         id: "theme",
@@ -1414,7 +1474,9 @@ function CommandPalette({
       }
       if (event.key === "ArrowUp") {
         event.preventDefault();
-        setSelectedIndex((current) => (current - 1 + commands.length) % commands.length);
+        setSelectedIndex(
+          (current) => (current - 1 + commands.length) % commands.length,
+        );
       }
       if (event.key === "Enter") {
         event.preventDefault();
@@ -1569,7 +1631,9 @@ export default function App() {
 
       <AnimatePresence mode="wait">
         <motion.div key={route}>
-          {route === "/" ? <HomePage onOpenPalette={() => setPaletteOpen(true)} /> : null}
+          {route === "/" ? (
+            <HomePage onOpenPalette={() => setPaletteOpen(true)} />
+          ) : null}
           {route === "/projects" ? (
             <RoutePage title="Projects">
               <ProjectsSection routeOnly />
