@@ -87,8 +87,9 @@ export const site: {
     github: "https://github.com/sahiljadhav7",
     twitter: "https://twitter.com/",
     linkedin: "https://www.linkedin.com/in/sahil-jadhav1/",
-    email: "mailto:jadhavsahilcodes@gmail.com",
-    resume: "#contact",
+    email:
+      "https://mail.google.com/mail/?view=cm&fs=1&to=jadhavsahilcodes@gmail.com",
+    resume: "/Sahil-Jadhav-Resume.pdf",
     discord: "https://discord.com/",
     medium: "https://medium.com/",
   },

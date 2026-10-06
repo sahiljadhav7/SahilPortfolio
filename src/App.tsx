@@ -640,11 +640,7 @@ function ContactSection() {
       <Shell className="py-1">
         <div className="grid grid-cols-2 sm:grid-cols-5">
           {contactItems.map((item) => {
-            const isMail = item.href.startsWith("mailto:");
-            const isExternal =
-              !item.href.startsWith("/") &&
-              !item.href.startsWith("#") &&
-              !isMail;
+            const isExternal = !item.href.startsWith("#");
             return (
               <a
                 key={item.label}
