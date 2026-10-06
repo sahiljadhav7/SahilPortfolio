@@ -36,8 +36,16 @@ import {
   type ProjectCategory,
 } from "@/config/site";
 import { useGithubHeatmap } from "@/hooks/useGithubHeatmap";
+import { useOpenSourcePRs } from "@/hooks/useOpenSourcePRs";
+import type { ContributionStatus } from "@/lib/openSource";
 
-type RoutePath = "/" | "/projects" | "/experience" | "/contact" | "/writing";
+type RoutePath =
+  | "/"
+  | "/projects"
+  | "/experience"
+  | "/open-source"
+  | "/contact"
+  | "/writing";
 type ThemeMode = "dark" | "light";
 type TechCategory =
   | "All"
@@ -57,6 +65,7 @@ const navItems: NavItem[] = [
   { label: "About", href: "/#about", type: "section" },
   { label: "Projects", href: "/#projects", type: "section" },
   { label: "Experience", href: "/#experience", type: "section" },
+  { label: "Open Source", href: "/#open-source", type: "section" },
   { label: "Contact", href: "/#contact", type: "section" },
   { label: "Reading", href: "/writing", type: "route" },
 ];
@@ -66,6 +75,7 @@ const sideIndexItems = [
   { id: "contact", label: "Contact" },
   { id: "projects", label: "Projects" },
   { id: "experience", label: "Experience" },
+  { id: "open-source", label: "Open Source" },
   { id: "skills", label: "Skills" },
   { id: "writing", label: "Reading" },
   { id: "github", label: "GitHub" },
@@ -105,6 +115,7 @@ const pageTransition = {
 function normalizePath(pathname: string): RoutePath {
   if (pathname === "/projects") return "/projects";
   if (pathname === "/experience") return "/experience";
+  if (pathname === "/open-source") return "/open-source";
   if (pathname === "/contact") return "/contact";
   if (pathname === "/writing") return "/writing";
   return "/";
@@ -991,6 +1002,156 @@ function ExperienceSection() {
   );
 }
 
+const RECENT_CONTRIBUTIONS_ON_HOME = 5;
+
+const contributionStatusLabel: Record<ContributionStatus, string> = {
+  merged: "Merged",
+  open: "Open",
+};
+
+function ContributionStatusDot({ status }: { status: ContributionStatus }) {
+  return (
+    <span
+      className={cn(
+        "mt-[7px] h-2 w-2 shrink-0 rounded-full",
+        status === "merged" ? "bg-[var(--merged)]" : "bg-[var(--open)]",
+      )}
+      title={contributionStatusLabel[status]}
+    />
+  );
+}
+
+function OpenSourceSection({ routeOnly = false }: { routeOnly?: boolean }) {
+  const { contributions, topRepositories, loading, allPRsUrl } =
+    useOpenSourcePRs(site.github.username);
+  const shown = routeOnly
+    ? contributions
+    : contributions.slice(0, RECENT_CONTRIBUTIONS_ON_HOME);
+
+  return (
+    <section id="open-source">
+      <SectionHeader
+        title="Open Source"
+        aside={
+          <div className="flex items-center gap-4 font-mono text-[11px] text-[var(--soft)]">
+            {(["merged", "open"] as const).map((status) => (
+              <span key={status} className="inline-flex items-center gap-1.5">
+                <span
+                  className={cn(
+                    "h-2 w-2 rounded-full",
+                    status === "merged"
+                      ? "bg-[var(--merged)]"
+                      : "bg-[var(--open)]",
+                  )}
+                />
+                {contributionStatusLabel[status]}
+              </span>
+            ))}
+          </div>
+        }
+      />
+      <Shell className="py-6">
+        <p className="font-mono text-[10px] uppercase tracking-widest text-[var(--soft)]">
+          Recent contributions
+        </p>
+
+        {shown.length === 0 ? (
+          loading ? (
+            <div className="mt-4 space-y-4" aria-hidden="true">
+              {Array.from({ length: 3 }, (_, index) => (
+                <div key={index} className="space-y-2">
+                  <div className="h-3 w-3/4 rounded bg-[var(--hover)]" />
+                  <div className="h-2.5 w-1/3 rounded bg-[var(--hover)]" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <a
+              href={allPRsUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-4 inline-flex items-center gap-1.5 text-[13px] text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
+            >
+              View my PRs on GitHub
+              <ArrowUpRight className="h-3.5 w-3.5" />
+            </a>
+          )
+        ) : (
+          <ul className="mt-2">
+            {shown.map((contribution) => (
+              <li key={contribution.url}>
+                <a
+                  href={contribution.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="group -mx-2 flex gap-3 rounded-md px-2 py-2.5 transition-colors hover:bg-[var(--hover)]"
+                >
+                  <ContributionStatusDot status={contribution.status} />
+                  <span className="min-w-0">
+                    <span className="block text-[14px] text-[var(--fg)]">
+                      {contribution.title}
+                      <span className="sr-only">
+                        {" "}
+                        ({contributionStatusLabel[contribution.status]})
+                      </span>
+                    </span>
+                    <span className="mt-0.5 block font-mono text-[11px] text-[var(--soft)]">
+                      {contribution.repo} · #{contribution.number} ·{" "}
+                      {new Date(contribution.createdAt).toLocaleDateString(
+                        "en-US",
+                        { month: "short", year: "numeric" },
+                      )}
+                    </span>
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {!routeOnly && contributions.length > RECENT_CONTRIBUTIONS_ON_HOME ? (
+          <button
+            type="button"
+            onClick={() => navigateTo("/open-source")}
+            className="mt-2 font-mono text-[11px] text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
+          >
+            View all →
+          </button>
+        ) : null}
+
+        {topRepositories.length > 0 ? (
+          <>
+            <p className="mt-8 font-mono text-[10px] uppercase tracking-widest text-[var(--soft)]">
+              Most contributed to
+            </p>
+            <ul className="mt-2">
+              {topRepositories.map((repository) => (
+                <li key={repository.repo}>
+                  <a
+                    href={repository.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group -mx-2 flex items-center justify-between gap-4 rounded-md px-2 py-2 font-mono text-[12px] transition-colors hover:bg-[var(--hover)]"
+                  >
+                    <span className="truncate text-[var(--fg)]">
+                      {repository.repo}
+                    </span>
+                    <span className="inline-flex shrink-0 items-center gap-1.5 text-[var(--soft)]">
+                      {repository.count}{" "}
+                      {repository.count === 1 ? "PR" : "PRs"}
+                      <ArrowUpRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
+      </Shell>
+    </section>
+  );
+}
+
 function TechStackSection() {
   const [activeTab, setActiveTab] = useState<TechCategory>("All");
 
@@ -1335,6 +1496,8 @@ function HomePage() {
       <GapBand />
       <ExperienceSection />
       <GapBand />
+      <OpenSourceSection />
+      <GapBand />
       <TechStackSection />
       <GapBand />
       <WritingSection />
@@ -1397,6 +1560,11 @@ export default function App() {
           {route === "/experience" ? (
             <RoutePage title="Experience">
               <ExperienceSection />
+            </RoutePage>
+          ) : null}
+          {route === "/open-source" ? (
+            <RoutePage title="Open Source">
+              <OpenSourceSection routeOnly />
             </RoutePage>
           ) : null}
           {route === "/contact" ? (
