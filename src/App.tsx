@@ -612,11 +612,6 @@ function ContactSection() {
       icon: <ExternalLink className="h-4 w-4" />,
     },
     {
-      label: "Twitter",
-      href: site.socials.twitter,
-      icon: <ExternalLink className="h-4 w-4" />,
-    },
-    {
       label: "Mail",
       href: site.socials.email,
       icon: <Mail className="h-4 w-4" />,
