@@ -28,21 +28,23 @@ function writeCache(login: string, contributions: Contribution[]) {
   }
 }
 
+function contributionsQuery(login: string) {
+  return `is:pr author:${login} -user:${login}`;
+}
+
 export function useOpenSourcePRs(login: string) {
   const [contributions, setContributions] = useState<Contribution[]>(() =>
     readCache(login),
   );
   const [loading, setLoading] = useState(true);
-  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    const query = `is:pr author:${login} -user:${login}`;
 
     async function load() {
       try {
         const params = new URLSearchParams({
-          q: query,
+          q: contributionsQuery(login),
           sort: "created",
           order: "desc",
           per_page: "100",
@@ -65,13 +67,11 @@ export function useOpenSourcePRs(login: string) {
         const next = toContributions(items);
         if (!cancelled) {
           setContributions(next);
-          setFailed(false);
           writeCache(login, next);
         }
       } catch {
-        if (!cancelled) {
-          setFailed(true);
-        }
+        // Keep showing the cached contributions; with none, the section
+        // links to GitHub instead.
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -91,12 +91,11 @@ export function useOpenSourcePRs(login: string) {
       contributions,
       topRepositories: topRepositories(contributions, login),
       loading,
-      failed,
       allPRsUrl: `https://github.com/search?${new URLSearchParams({
-        q: `is:pr author:${login} -user:${login}`,
+        q: contributionsQuery(login),
         type: "pullrequests",
       })}`,
     }),
-    [contributions, failed, loading, login],
+    [contributions, loading, login],
   );
 }

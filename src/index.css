@@ -46,8 +46,8 @@
   --hover: rgba(255, 255, 255, 0.05);
   --card: #101010;
   --chip: #161616;
-  --merged: #8957e5;
-  --open: #238636;
+  --status-merged: #8957e5;
+  --status-open: #238636;
   --font-sans: "Amiamie", "Inter", system-ui, sans-serif;
   --font-serif: "Instrument Serif", Georgia, serif;
   --font-mono: "JetBrains Mono", monospace;
@@ -64,8 +64,8 @@ html.light {
   --hover: rgba(0, 0, 0, 0.04);
   --card: #ffffff;
   --chip: #f4f4f5;
-  --merged: #8250df;
-  --open: #1f883d;
+  --status-merged: #8250df;
+  --status-open: #1f883d;
 }
 
 @layer base {

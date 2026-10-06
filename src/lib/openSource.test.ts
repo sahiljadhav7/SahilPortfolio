@@ -28,6 +28,10 @@ test("cleanTitle strips a leading issue reference", () => {
   );
 });
 
+test("cleanTitle strips an issue reference and a commit type together", () => {
+  assert.equal(cleanTitle("Fixes #12: fix(parser): handle empty input"), "Handle empty input");
+});
+
 test("cleanTitle strips a trailing issue reference", () => {
   assert.equal(
     cleanTitle("fix: align movable solfege in widgets and getSolfege (Related to #2050)"),

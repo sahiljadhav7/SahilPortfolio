@@ -6,8 +6,8 @@ const TRAILING_ISSUE_REF = /\s*\((related to\s+)?#\d+\)$/i;
 export function cleanTitle(title: string): string {
   const cleaned = title
     .trim()
-    .replace(CONVENTIONAL_PREFIX, "")
     .replace(LEADING_ISSUE_REF, "")
+    .replace(CONVENTIONAL_PREFIX, "")
     .replace(TRAILING_ISSUE_REF, "");
   return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
 }

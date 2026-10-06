@@ -1009,12 +1009,17 @@ const contributionStatusLabel: Record<ContributionStatus, string> = {
   open: "Open",
 };
 
+const contributionStatusColor: Record<ContributionStatus, string> = {
+  merged: "bg-[var(--status-merged)]",
+  open: "bg-[var(--status-open)]",
+};
+
 function ContributionStatusDot({ status }: { status: ContributionStatus }) {
   return (
     <span
       className={cn(
         "mt-[7px] h-2 w-2 shrink-0 rounded-full",
-        status === "merged" ? "bg-[var(--merged)]" : "bg-[var(--open)]",
+        contributionStatusColor[status],
       )}
       title={contributionStatusLabel[status]}
     />
@@ -1039,9 +1044,7 @@ function OpenSourceSection({ routeOnly = false }: { routeOnly?: boolean }) {
                 <span
                   className={cn(
                     "h-2 w-2 rounded-full",
-                    status === "merged"
-                      ? "bg-[var(--merged)]"
-                      : "bg-[var(--open)]",
+                    contributionStatusColor[status],
                   )}
                 />
                 {contributionStatusLabel[status]}
@@ -1099,7 +1102,7 @@ function OpenSourceSection({ routeOnly = false }: { routeOnly?: boolean }) {
                       {contribution.repo} · #{contribution.number} ·{" "}
                       {new Date(contribution.createdAt).toLocaleDateString(
                         "en-US",
-                        { month: "short", year: "numeric" },
+                        { month: "short", year: "numeric", timeZone: "UTC" },
                       )}
                     </span>
                   </span>
@@ -1110,13 +1113,16 @@ function OpenSourceSection({ routeOnly = false }: { routeOnly?: boolean }) {
         )}
 
         {!routeOnly && contributions.length > RECENT_CONTRIBUTIONS_ON_HOME ? (
-          <button
-            type="button"
-            onClick={() => navigateTo("/open-source")}
-            className="mt-2 font-mono text-[11px] text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
+          <a
+            href="/open-source"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateTo("/open-source");
+            }}
+            className="mt-2 inline-block font-mono text-[11px] text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
           >
             View all →
-          </button>
+          </a>
         ) : null}
 
         {topRepositories.length > 0 ? (
