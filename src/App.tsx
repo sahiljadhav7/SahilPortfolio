@@ -53,13 +53,6 @@ type NavItem = {
   type: "route" | "section";
 };
 
-type Command = {
-  id: string;
-  label: string;
-  hint?: string;
-  action: () => void;
-};
-
 const navItems: NavItem[] = [
   { label: "About", href: "/#about", type: "section" },
   { label: "Projects", href: "/#projects", type: "section" },
@@ -295,24 +288,6 @@ function useClock() {
   return time;
 }
 
-function useCommandPaletteShortcuts(open: () => void, close: () => void) {
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      const isMeta = event.metaKey || event.ctrlKey;
-      if (isMeta && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        open();
-      }
-      if (event.key === "Escape") {
-        close();
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [close, open]);
-}
-
 function Shell({
   children,
   className,
@@ -389,13 +364,11 @@ function Nav({
   activeSection,
   theme,
   toggleTheme,
-  onOpenPalette,
 }: {
   route: RoutePath;
   activeSection: string;
   theme: ThemeMode;
   toggleTheme: () => void;
-  onOpenPalette: () => void;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -451,26 +424,10 @@ function Nav({
               </button>
             );
           })}
-          <button
-            type="button"
-            onClick={onOpenPalette}
-            aria-label="Open command palette"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--chip)] text-[var(--fg)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--soft)]"
-          >
-            <Search className="h-4 w-4" />
-          </button>
           <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
         </div>
 
         <div className="flex items-center gap-2 sm:hidden">
-          <button
-            type="button"
-            onClick={onOpenPalette}
-            aria-label="Open command palette"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--chip)] text-[var(--fg)]"
-          >
-            <Search className="h-4 w-4" />
-          </button>
           <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
           <button
             type="button"
@@ -533,11 +490,8 @@ function Nav({
   );
 }
 
-function Hero({ onOpenPalette }: { onOpenPalette: () => void }) {
-  const avatars = ["/profile.jpg", "/profile2.png"];
-  const [avatarIndex, setAvatarIndex] = useState(0);
+function Hero() {
   const [headlineIndex, setHeadlineIndex] = useState(0);
-  const [avatarFailed, setAvatarFailed] = useState(false);
 
   useEffect(() => {
     const id = window.setInterval(() => {
@@ -546,19 +500,14 @@ function Hero({ onOpenPalette }: { onOpenPalette: () => void }) {
     return () => window.clearInterval(id);
   }, []);
 
-  const rotateAvatar = () => {
-    setAvatarFailed(false);
-    setAvatarIndex((current) => (current + 1) % avatars.length);
-  };
-
   return (
     <motion.section {...pageTransition}>
       <Shell className="py-7 sm:py-9">
-        <div className="relative h-36 overflow-hidden rounded-xl border border-[var(--line)] sm:h-44">
+        <div className="relative aspect-[3/1] w-full overflow-hidden rounded-xl border border-[var(--line)]">
           <img
             src="/images/cover.jpg"
             alt="Editorial portfolio cover"
-            className="h-full w-full object-cover opacity-65 grayscale"
+            className="h-full w-full object-cover object-top"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-[rgba(0,0,0,0.35)] to-transparent" />
           <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,rgba(255,255,255,0.05)_0,rgba(255,255,255,0.05)_1px,transparent_1px,transparent_4px)]" />
@@ -568,36 +517,6 @@ function Hero({ onOpenPalette }: { onOpenPalette: () => void }) {
 
         <div className="mt-6 flex flex-col items-center gap-5 text-center sm:flex-row sm:items-end sm:justify-between sm:text-left">
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-end">
-            <div className="group relative">
-              <button
-                type="button"
-                onClick={rotateAvatar}
-                className="relative block overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--chip)]"
-              >
-                {avatarFailed ? (
-                  <div className="flex h-20 w-20 items-center justify-center font-serif text-lg text-[var(--fg)]">
-                    SJ
-                  </div>
-                ) : (
-                  <img
-                    src={avatars[avatarIndex]}
-                    alt={site.name}
-                    className="h-20 w-20 object-cover grayscale"
-                    onError={() => setAvatarFailed(true)}
-                  />
-                )}
-                <span className="absolute inset-0 bg-[repeating-linear-gradient(0deg,rgba(255,255,255,0.10)_0,rgba(255,255,255,0.10)_1px,transparent_1px,transparent_4px)] opacity-[0.18] transition-opacity duration-200 group-hover:opacity-[0.30]" />
-              </button>
-              <button
-                type="button"
-                onClick={rotateAvatar}
-                className="absolute right-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--chip)] text-[var(--fg)] opacity-100 transition-all duration-200 sm:opacity-0 sm:group-hover:opacity-100"
-                aria-label="Rotate avatar"
-              >
-                <ChevronDown className="h-3.5 w-3.5 rotate-[-90deg]" />
-              </button>
-            </div>
-
             <div>
               <h1 className="glitch-text font-serif text-3xl leading-none tracking-tight sm:text-[38px]">
                 {site.name}
@@ -622,18 +541,6 @@ function Hero({ onOpenPalette }: { onOpenPalette: () => void }) {
               </div>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={onOpenPalette}
-            className="inline-flex items-center gap-3 rounded-lg border border-[var(--line)] bg-[var(--chip)] px-3 py-2 font-mono text-[11px] text-[var(--muted)] transition-all duration-200 hover:-translate-y-0.5 hover:text-[var(--fg)]"
-          >
-            <Search className="h-3.5 w-3.5" />
-            <span>Command Palette</span>
-            <span className="rounded border border-[var(--line)] px-1.5 py-0.5">
-              ⌘K
-            </span>
-          </button>
         </div>
       </Shell>
     </motion.section>
@@ -1397,147 +1304,6 @@ function SideIndex({ activeId }: { activeId: string }) {
   );
 }
 
-function CommandPalette({
-  open,
-  onClose,
-  onToggleTheme,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onToggleTheme: () => void;
-}) {
-  const [selectedIndex, setSelectedIndex] = useState(0);
-
-  const commands = useMemo<Command[]>(
-    () => [
-      {
-        id: "about",
-        label: "Go to About",
-        hint: "/",
-        action: () => navigateTo("/#about"),
-      },
-      {
-        id: "projects",
-        label: "Go to Projects",
-        hint: "/projects",
-        action: () => navigateTo("/projects"),
-      },
-      {
-        id: "experience",
-        label: "Go to Experience",
-        hint: "/experience",
-        action: () => navigateTo("/experience"),
-      },
-      {
-        id: "contact",
-        label: "Go to Contact",
-        hint: "/contact",
-        action: () => navigateTo("/contact"),
-      },
-      {
-        id: "writing",
-        label: "Go to Writing",
-        hint: "/writing",
-        action: () => navigateTo("/writing"),
-      },
-      {
-        id: "github",
-        label: "Open GitHub",
-        hint: "external",
-        action: () => window.open(site.socials.github, "_blank", "noreferrer"),
-      },
-      {
-        id: "linkedin",
-        label: "Open LinkedIn",
-        hint: "external",
-        action: () =>
-          window.open(site.socials.linkedin, "_blank", "noreferrer"),
-      },
-      {
-        id: "theme",
-        label: "Toggle Theme",
-        hint: "light/dark",
-        action: () => onToggleTheme(),
-      },
-    ],
-    [onToggleTheme],
-  );
-
-  useEffect(() => {
-    if (!open) return;
-    setSelectedIndex(0);
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "ArrowDown") {
-        event.preventDefault();
-        setSelectedIndex((current) => (current + 1) % commands.length);
-      }
-      if (event.key === "ArrowUp") {
-        event.preventDefault();
-        setSelectedIndex(
-          (current) => (current - 1 + commands.length) % commands.length,
-        );
-      }
-      if (event.key === "Enter") {
-        event.preventDefault();
-        commands[selectedIndex]?.action();
-        onClose();
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [commands, onClose, open, selectedIndex]);
-
-  return (
-    <AnimatePresence>
-      {open ? (
-        <motion.div
-          className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 px-4 pt-[14vh]"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-        >
-          <motion.div
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 14 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            onClick={(event) => event.stopPropagation()}
-            className="w-full max-w-xl overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--card)] shadow-2xl"
-          >
-            <div className="border-b border-[var(--line)] px-4 py-3 font-mono text-[11px] text-[var(--soft)]">
-              Command Palette
-            </div>
-            <div className="p-2">
-              {commands.map((command, index) => (
-                <button
-                  key={command.id}
-                  type="button"
-                  onClick={() => {
-                    command.action();
-                    onClose();
-                  }}
-                  className={cn(
-                    "flex w-full items-center justify-between rounded-lg px-3 py-3 text-left font-mono text-[12px] transition-colors",
-                    selectedIndex === index
-                      ? "bg-[var(--hover)] text-[var(--fg)]"
-                      : "text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--fg)]",
-                  )}
-                >
-                  <span>{command.label}</span>
-                  <span className="text-[var(--soft)]">{command.hint}</span>
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
-  );
-}
-
 function ConfettiOverlay({ burst }: { burst: number }) {
   if (!burst) return null;
 
@@ -1561,10 +1327,10 @@ function ConfettiOverlay({ burst }: { burst: number }) {
   );
 }
 
-function HomePage({ onOpenPalette }: { onOpenPalette: () => void }) {
+function HomePage() {
   return (
     <motion.main {...pageTransition}>
-      <Hero onOpenPalette={onOpenPalette} />
+      <Hero />
       <GapBand />
       <AboutSection />
       <GapBand />
@@ -1609,14 +1375,9 @@ function RoutePage({
 export default function App() {
   const route = useRoute();
   const { theme, toggleTheme } = useThemeMode();
-  const [paletteOpen, setPaletteOpen] = useState(false);
   const activeSection = useActiveSection(route === "/");
   const burst = useKonamiAchievement();
   useOneko();
-  useCommandPaletteShortcuts(
-    () => setPaletteOpen(true),
-    () => setPaletteOpen(false),
-  );
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--fg)]">
@@ -1625,14 +1386,13 @@ export default function App() {
         activeSection={activeSection}
         theme={theme}
         toggleTheme={toggleTheme}
-        onOpenPalette={() => setPaletteOpen(true)}
       />
       {route === "/" ? <SideIndex activeId={activeSection} /> : null}
 
       <AnimatePresence mode="wait">
         <motion.div key={route}>
           {route === "/" ? (
-            <HomePage onOpenPalette={() => setPaletteOpen(true)} />
+            <HomePage />
           ) : null}
           {route === "/projects" ? (
             <RoutePage title="Projects">
@@ -1657,11 +1417,6 @@ export default function App() {
         </motion.div>
       </AnimatePresence>
 
-      <CommandPalette
-        open={paletteOpen}
-        onClose={() => setPaletteOpen(false)}
-        onToggleTheme={toggleTheme}
-      />
       <ConfettiOverlay burst={burst} />
     </div>
   );
