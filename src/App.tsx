@@ -1482,7 +1482,7 @@ function FooterSection() {
 
 function SideIndex({ activeId }: { activeId: string }) {
   return (
-    <div className="fixed left-[calc(50%+410px)] top-[26vh] hidden xl:block">
+    <div className="fixed left-[calc(50%+410px)] top-[26vh] hidden font-poppins xl:block">
       <div className="space-y-3">
         {sideIndexItems.map((item) => {
           const active = activeId === item.id;

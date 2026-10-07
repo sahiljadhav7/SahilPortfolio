@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400&family=Poppins:wght@400;600&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -52,6 +52,7 @@
   --font-serif: "Instrument Serif", Georgia, serif;
   --font-mono: "JetBrains Mono", monospace;
   --font-accent: "Amiamie-Round", "Amiamie", sans-serif;
+  --font-poppins: "Poppins", system-ui, sans-serif;
 }
 
 html.light {
@@ -128,6 +129,10 @@ html.light {
 
   .font-accent {
     font-family: var(--font-accent);
+  }
+
+  .font-poppins {
+    font-family: var(--font-poppins);
   }
 
   .bg-stripes {

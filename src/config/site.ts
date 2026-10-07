@@ -69,7 +69,7 @@ export const site: {
 } = {
   name: "Sahil Jadhav",
   role: "Full Stack Developer",
-  location: "Mumbai, India",
+  location: "Navi Mumbai, India",
   email: "jadhavsahilcodes@gmail.com",
   about: [
     "I'm a full stack engineer who builds products end to end, from database queries and REST APIs to fast, responsive interfaces. I studied Electronics & Telecommunication Engineering at Lokmanya Tilak College of Engineering, Navi Mumbai (2022–2026), with a minor in Data Structures & Algorithms.",
@@ -98,7 +98,7 @@ export const site: {
       role: "SDE Intern",
       period: "Dec 2025 - Feb 2026",
       blurb:
-        "Built production-facing frontend features with React and Next.js, collaborated through Git-driven workflows, and supported API integrations across the stack.",
+        "Built REST APIs with Node.js and PostgreSQL, cutting data transfer latency by 25% through query optimization and indexing, and shipped three frontend features for a production internal platform in React, Next.js, and TypeScript within four weeks.",
     },
     {
       company: "CONCERTO",
