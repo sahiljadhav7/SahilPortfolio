@@ -65,7 +65,6 @@ export const site: {
   writing: SiteWriting[];
   github: {
     username: string;
-    contributionsLastYear: number;
   };
 } = {
   name: "Sahil Jadhav",
@@ -251,7 +250,6 @@ export const site: {
   ],
   github: {
     username: "sahiljadhav7",
-    contributionsLastYear: 500,
   },
 };
 

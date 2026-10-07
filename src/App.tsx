@@ -25,7 +25,9 @@ import {
   type CSSProperties,
   type ReactNode,
   useEffect,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { cn } from "@/lib/utils";
@@ -1287,10 +1289,18 @@ function WritingSection() {
 }
 
 function GitHubActivitySection() {
-  const { weeks, monthLabels, opacitySteps } = useGithubHeatmap(
-    site.github.username,
-    site.github.contributionsLastYear,
-  );
+  const { weeks, monthLabels, opacitySteps, total, unavailable } =
+    useGithubHeatmap(site.github.username);
+  const profileUrl = `https://github.com/${site.github.username}`;
+  // A narrow column for the weekday labels, then one per week.
+  const columns = `12px repeat(${weeks.length}, minmax(0, 1fr))`;
+  const scrollerRef = useRef<HTMLDivElement>(null);
+
+  // On narrow screens the grid scrolls; start at the newest weeks, as GitHub does.
+  useLayoutEffect(() => {
+    const scroller = scrollerRef.current;
+    if (scroller) scroller.scrollLeft = scroller.scrollWidth;
+  }, [weeks]);
 
   return (
     <section id="github">
@@ -1298,7 +1308,7 @@ function GitHubActivitySection() {
         title="GitHub Activity"
         aside={
           <a
-            href={`https://github.com/${site.github.username}`}
+            href={profileUrl}
             target="_blank"
             rel="noreferrer"
             className="font-mono text-[11px] text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
@@ -1308,61 +1318,93 @@ function GitHubActivitySection() {
         }
       />
       <Shell className="py-7 sm:py-8">
-        <div className="overflow-x-auto">
-          <div className="min-w-[640px]">
-            <div className="mb-2 grid grid-cols-[repeat(53,minmax(0,1fr))] gap-[3px] pl-10">
-              {Array.from({ length: 53 }, (_, index) => {
-                const label = monthLabels.find(
-                  (item) => item.index === index,
-                )?.label;
-                return (
+        {unavailable ? (
+          <a
+            href={profileUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 text-[13px] text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
+          >
+            View my activity on GitHub
+            <ArrowUpRight className="h-3.5 w-3.5" />
+          </a>
+        ) : (
+          <div ref={scrollerRef} className="overflow-x-auto">
+            <div className="min-w-[640px]">
+              <div
+                className="mb-2 grid gap-[3px]"
+                style={{ gridTemplateColumns: columns }}
+              >
+                <span />
+                {weeks.map((_, index) => (
                   <span
                     key={`month-${index}`}
-                    className="font-mono text-[10px] text-[var(--soft)]"
+                    className="overflow-visible whitespace-nowrap font-mono text-[10px] text-[var(--soft)]"
                   >
-                    {label ?? ""}
+                    {monthLabels.find((item) => item.weekIndex === index)
+                      ?.label ?? ""}
                   </span>
-                );
-              })}
-            </div>
+                ))}
+              </div>
 
-            <div className="flex gap-3">
-              <div className="grid grid-rows-7 gap-[3px] pt-[2px] font-mono text-[10px] text-[var(--soft)]">
-                {["S", "M", "T", "W", "T", "F", "S"].map((day) => (
-                  <span key={day} className="h-[10px]">
+              <div
+                className="grid grid-flow-col grid-rows-7 gap-[3px]"
+                style={{ gridTemplateColumns: columns }}
+              >
+                {["S", "M", "T", "W", "T", "F", "S"].map((day, index) => (
+                  <span
+                    key={`day-${index}`}
+                    className="flex items-center font-mono text-[10px] leading-none text-[var(--soft)]"
+                  >
                     {day}
                   </span>
                 ))}
-              </div>
-              <div className="grid grid-flow-col grid-rows-7 gap-[3px]">
-                {weeks.map((week) => (
-                  <Fragment key={week.weekIndex}>
-                    {week.days.map((cell) => (
-                      <div
-                        key={cell.date}
-                        title={`${cell.date}: ${cell.count} contributions`}
-                        className="size-[10px] rounded-[2px] bg-[var(--fg)] transition-transform duration-200 hover:scale-125"
-                        style={{ opacity: opacitySteps[cell.level] }}
-                      />
-                    ))}
+                {weeks.map((week, weekIndex) => (
+                  <Fragment key={weekIndex}>
+                    {week.map((cell, dayIndex) =>
+                      cell ? (
+                        <div
+                          key={cell.date}
+                          title={`${cell.date}: ${cell.count} ${
+                            cell.count === 1 ? "contribution" : "contributions"
+                          }`}
+                          className="aspect-square rounded-[2px] bg-[var(--fg)] transition-transform duration-200 hover:scale-125"
+                          style={{ opacity: opacitySteps[cell.level] }}
+                        />
+                      ) : (
+                        <div
+                          key={`pad-${weekIndex}-${dayIndex}`}
+                          className="aspect-square"
+                        />
+                      ),
+                    )}
                   </Fragment>
                 ))}
               </div>
-            </div>
 
-            <div className="mt-4 flex items-center justify-end gap-2 font-mono text-[10px] text-[var(--soft)]">
-              <span>Less</span>
-              {opacitySteps.map((opacity) => (
-                <span
-                  key={opacity}
-                  className="size-[10px] rounded-[2px] bg-[var(--fg)]"
-                  style={{ opacity }}
-                />
-              ))}
-              <span>More</span>
+              <div className="mt-4 flex items-center justify-between gap-4 font-mono text-[10px] text-[var(--soft)]">
+                <span>
+                  {total === null
+                    ? "Loading contributions…"
+                    : `${total.toLocaleString()} ${
+                        total === 1 ? "contribution" : "contributions"
+                      } in the last year`}
+                </span>
+                <span className="flex items-center gap-2">
+                  <span>Less</span>
+                  {opacitySteps.map((opacity) => (
+                    <span
+                      key={opacity}
+                      className="size-[10px] rounded-[2px] bg-[var(--fg)]"
+                      style={{ opacity }}
+                    />
+                  ))}
+                  <span>More</span>
+                </span>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </Shell>
     </section>
   );

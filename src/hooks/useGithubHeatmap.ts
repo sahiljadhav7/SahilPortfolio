@@ -1,153 +1,70 @@
 import { useEffect, useMemo, useState } from "react";
-
-type HeatmapCell = {
-  date: string;
-  count: number;
-  level: 0 | 1 | 2 | 3 | 4;
-};
-
-type HeatmapWeek = {
-  weekIndex: number;
-  days: HeatmapCell[];
-};
+import {
+  emptyWeeks,
+  monthLabels,
+  toCalendar,
+  toWeeks,
+  type ContributionsResponse,
+  type HeatmapCalendar,
+} from "@/lib/githubHeatmap";
 
 const LEVELS = [0.07, 0.25, 0.45, 0.7, 1] as const;
 
-function getLevel(count: number): 0 | 1 | 2 | 3 | 4 {
-  if (count <= 0) return 0;
-  if (count <= 2) return 1;
-  if (count <= 5) return 2;
-  if (count <= 8) return 3;
-  return 4;
+function cacheKey(login: string) {
+  return `github-heatmap:${login}`;
 }
 
-function generateFallback(total: number): HeatmapCell[] {
-  const today = new Date();
-  const cells: HeatmapCell[] = [];
-
-  for (let i = 364; i >= 0; i -= 1) {
-    const date = new Date(today);
-    date.setDate(today.getDate() - i);
-    const weekday = date.getDay();
-    const base = weekday === 0 || weekday === 6 ? 1 : 3;
-    const wave = Math.max(0, Math.round(Math.sin(i / 19) * 3 + base));
-    const bonus = i % 11 === 0 ? 4 : 0;
-    const count = Math.min(12, wave + bonus + (total > 400 ? 1 : 0));
-    cells.push({
-      date: date.toISOString().slice(0, 10),
-      count,
-      level: getLevel(count),
-    });
+function readCache(login: string): HeatmapCalendar | null {
+  try {
+    const raw = window.localStorage.getItem(cacheKey(login));
+    const parsed = raw ? (JSON.parse(raw) as HeatmapCalendar) : null;
+    return parsed && Array.isArray(parsed.days) ? parsed : null;
+  } catch {
+    return null;
   }
-
-  return cells;
 }
 
-function chunkWeeks(cells: HeatmapCell[]): HeatmapWeek[] {
-  const weeks: HeatmapWeek[] = [];
-  for (let i = 0; i < cells.length; i += 7) {
-    weeks.push({
-      weekIndex: weeks.length,
-      days: cells.slice(i, i + 7),
-    });
+function writeCache(login: string, calendar: HeatmapCalendar) {
+  try {
+    window.localStorage.setItem(cacheKey(login), JSON.stringify(calendar));
+  } catch {
+    // Storage can be full or blocked; the live data is still shown.
   }
-  return weeks;
 }
 
-function getMonthLabels(cells: HeatmapCell[]) {
-  const labels: { index: number; label: string }[] = [];
-  const monthFmt = new Intl.DateTimeFormat("en-US", { month: "short" });
-
-  cells.forEach((cell, index) => {
-    const date = new Date(cell.date);
-    if (date.getDate() <= 7) {
-      labels.push({
-        index: Math.floor(index / 7),
-        label: monthFmt.format(date),
-      });
-    }
-  });
-
-  return labels.filter(
-    (entry, index, array) =>
-      index === array.findIndex((candidate) => candidate.label === entry.label),
-  );
-}
-
-export function useGithubHeatmap(username: string, contributionsLastYear: number) {
-  const [cells, setCells] = useState<HeatmapCell[]>(() =>
-    generateFallback(contributionsLastYear),
+export function useGithubHeatmap(login: string) {
+  const [calendar, setCalendar] = useState<HeatmapCalendar | null>(() =>
+    readCache(login),
   );
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    const token = import.meta.env.VITE_GITHUB_TOKEN as string | undefined;
 
     async function load() {
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-
       try {
-        const response = await fetch("https://api.github.com/graphql", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            query: `
-              query ($login: String!) {
-                user(login: $login) {
-                  contributionsCollection {
-                    contributionCalendar {
-                      weeks {
-                        contributionDays {
-                          date
-                          contributionCount
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            `,
-            variables: { login: username },
-          }),
-        });
+        // Public mirror of the contribution calendar on the GitHub profile;
+        // needs no token, so nothing secret ships in the bundle.
+        const response = await fetch(
+          `https://github-contributions-api.jogruber.de/v4/${encodeURIComponent(login)}?y=last`,
+        );
 
         if (!response.ok) {
-          throw new Error(`GitHub GraphQL request failed: ${response.status}`);
+          throw new Error(`Contributions request failed: ${response.status}`);
         }
 
-        const json = await response.json();
-        const weeks = json?.data?.user?.contributionsCollection?.contributionCalendar
-          ?.weeks as
-          | Array<{ contributionDays: Array<{ date: string; contributionCount: number }> }>
-          | undefined;
-
-        if (!weeks) {
+        const next = toCalendar((await response.json()) as ContributionsResponse);
+        if (!next) {
           throw new Error("Contribution data missing");
         }
 
-        const nextCells = weeks
-          .flatMap((week) => week.contributionDays)
-          .slice(-365)
-          .map((day) => ({
-            date: day.date,
-            count: day.contributionCount,
-            level: getLevel(day.contributionCount),
-          })) satisfies HeatmapCell[];
-
-        if (!cancelled && nextCells.length > 0) {
-          setCells(nextCells);
+        if (!cancelled) {
+          setCalendar(next);
+          writeCache(login, next);
         }
       } catch {
-        if (!cancelled) {
-          setCells(generateFallback(contributionsLastYear));
-        }
+        // Keep showing the cached calendar; with none, the section links to
+        // the GitHub profile instead.
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -160,15 +77,17 @@ export function useGithubHeatmap(username: string, contributionsLastYear: number
     return () => {
       cancelled = true;
     };
-  }, [contributionsLastYear, username]);
+  }, [login]);
 
-  return useMemo(
-    () => ({
+  return useMemo(() => {
+    const weeks = calendar ? toWeeks(calendar.days) : emptyWeeks();
+    return {
       loading,
+      unavailable: !loading && !calendar,
+      total: calendar?.total ?? null,
       opacitySteps: LEVELS,
-      weeks: chunkWeeks(cells),
-      monthLabels: getMonthLabels(cells),
-    }),
-    [cells, loading],
-  );
+      weeks,
+      monthLabels: monthLabels(weeks),
+    };
+  }, [calendar, loading]);
 }
