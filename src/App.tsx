@@ -601,7 +601,7 @@ function AboutSection() {
                 key={item}
                 className="flex gap-2 text-[13px] text-[var(--muted)]"
               >
-                <span className="mt-1 h-2 w-2 rounded-full bg-emerald-500" />
+                <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
                 <span>{item}</span>
               </div>
             ))}

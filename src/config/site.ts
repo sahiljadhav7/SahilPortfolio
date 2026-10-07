@@ -72,15 +72,15 @@ export const site: {
   location: "Mumbai, India",
   email: "jadhavsahilcodes@gmail.com",
   about: [
-    "I build polished full stack products with a strong bias toward frontend craft, type-safe architecture, and practical engineering decisions that ship quickly.",
-    "My work spans React, Next.js, TypeScript, Node.js, Java, and Python, with experience across production features, API integrations, dashboards, and AI-assisted tooling.",
-    "I care about clear systems, sharp UX, and momentum. That shows up in the way I design interfaces, structure codebases, and collaborate with teams.",
+    "I'm a full stack engineer who builds products end to end, from database queries and REST APIs to fast, responsive interfaces. I studied Electronics & Telecommunication Engineering at Lokmanya Tilak College of Engineering, Navi Mumbai (2022–2026), with a minor in Data Structures & Algorithms.",
+    "As an SDE intern at JIO, I built Node.js and PostgreSQL APIs that cut data transfer latency by 25% and shipped three frontend features for a production internal platform in React, Next.js, and TypeScript. Earlier, at Concerto, I raised the company homepage's Lighthouse performance score from 80 to 96.5.",
+    "I also contribute to open source, with merged fixes in Corsair (YC W25) and Sugar Labs' Music Blocks and Slack threading for OpenRig, and I've published research on explainable AI for disease diagnosis.",
   ],
   tldr: [
-    "2 internships across frontend and product engineering",
-    "Published research paper in explainable AI",
-    "Hands-on with React, Next.js, Node.js, and TypeScript",
-    "Strong interest in developer tools, product UX, and AI workflows",
+    "SDE intern at JIO, building Node.js and PostgreSQL APIs",
+    "Merged open source PRs to Corsair (YC W25) and Sugar Labs",
+    "Published explainable AI research in IRE Journals (2026)",
+    "BE in E&TC (2026) with a minor in Data Structures & Algorithms",
   ],
   socials: {
     github: "https://github.com/sahiljadhav7",
